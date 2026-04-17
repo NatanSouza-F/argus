@@ -1,6 +1,6 @@
 streamlit
 plotly
 pandas
-pymssql
+pyodbc
 python-dotenv
 openpyxl
