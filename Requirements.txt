@@ -1,6 +1,7 @@
+# requirements.txt alternativo:
 streamlit
 plotly
 pandas
-pyodbc
+pymssql
 python-dotenv
 openpyxl
