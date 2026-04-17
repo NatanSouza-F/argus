@@ -6,7 +6,7 @@ import pandas as pd
 import logging
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from config import conectar_banco, configurar_logging
 
 configurar_logging()
@@ -28,11 +28,8 @@ def calcular_rfm():
                 c.Nome,
                 c.UF,
                 c.Renda_Mensal,
-                -- Recency: dias desde cadastro
                 DATEDIFF(day, c.Data_Cadastro, GETDATE()) as recency_dias,
-                -- Frequency: quantidade de produtos ativos
                 COUNT(DISTINCT CASE WHEN f.Status_Contrato = 'Ativo' THEN f.ID_Contrato END) as frequency,
-                -- Monetary: ticket mensal total
                 ISNULL(SUM(CASE WHEN f.Status_Contrato = 'Ativo' THEN f.Valor_Mensalidade END), 0) as monetary
             FROM Dim_Clientes c
             LEFT JOIN Fato_Contratos f 
@@ -74,7 +71,6 @@ def calcular_rfm():
         log.info("Calculando segmentação RFM...")
         df = pd.read_sql(query, conexao)
         
-        # Estatísticas por segmento
         resumo = df.groupby('segmento').agg({
             'ID_Cliente': 'count',
             'monetary': 'sum',
@@ -96,3 +92,27 @@ def calcular_rfm():
     finally:
         if conexao:
             conexao.close()
+
+
+def exportar_rfm():
+    """Exporta análise RFM para Excel"""
+    from datetime import datetime
+    
+    df, resumo = calcular_rfm()
+    
+    data_hora = datetime.now().strftime('%Y%m%d_%H%M%S')
+    caminho = f'Atlas_RFM_Segmentacao_{data_hora}.xlsx'
+    
+    with pd.ExcelWriter(caminho, engine='openpyxl') as writer:
+        df[df['segmento'] == 'Campeoes'].head(5000).to_excel(writer, sheet_name='Campeoes', index=False)
+        df[df['segmento'] == 'Potenciais'].head(5000).to_excel(writer, sheet_name='Potenciais', index=False)
+        df[df['segmento'] == 'Em Risco'].head(5000).to_excel(writer, sheet_name='Em Risco', index=False)
+        resumo.to_excel(writer, sheet_name='Resumo', index=True)
+        df.head(10000).to_excel(writer, sheet_name='Amostra_Geral', index=False)
+    
+    log.info(f"Relatório RFM salvo: {caminho}")
+    return caminho
+
+
+if __name__ == "__main__":
+    exportar_rfm()
