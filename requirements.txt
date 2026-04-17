@@ -1,4 +1,3 @@
-# requirements.txt alternativo:
 streamlit
 plotly
 pandas
