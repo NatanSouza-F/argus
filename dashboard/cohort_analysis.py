@@ -7,7 +7,10 @@ import numpy as np
 import logging
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+# Corrige o path para encontrar o config.py
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 from config import conectar_banco, configurar_logging
 
 configurar_logging()
