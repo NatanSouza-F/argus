@@ -20,7 +20,7 @@ def conectar_banco(tentativas=3):
     password = os.getenv('DB_PASSWORD')
     
     connection_string = (
-        f'DRIVER={{ODBC Driver 18 for SQL Server}};'
+        f'DRIVER={{ODBC Driver 17 for SQL Server}};'
         f'SERVER={server},1433;'
         f'DATABASE={database};'
         f'UID={user};'
