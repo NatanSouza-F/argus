@@ -29,5 +29,6 @@ def conectar_banco():
         user=user,
         password=password,
         database=database,
-        timeout=60
+        timeout=60,
+        login_timeout=60
     )
