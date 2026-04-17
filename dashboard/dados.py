@@ -2,7 +2,7 @@
 Camada de acesso a dados do dashboard Argus.
 Centraliza todas as queries que alimentam as visualizacoes.
 """
-import pymssql
+import pyodbc
 import pandas as pd
 import streamlit as st
 import os
