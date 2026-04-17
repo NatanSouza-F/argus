@@ -2,24 +2,13 @@
 Camada de acesso a dados do dashboard Argus.
 Centraliza todas as queries que alimentam as visualizações.
 """
-import pyodbc
+import pymssql
 import pandas as pd
 import streamlit as st
 import os
 from dotenv import load_dotenv
 
-# Aponta para o .env dentro da própria pasta dashboard
 load_dotenv()
-
-
-def conectar_banco():
-    server = os.getenv('DB_SERVER')
-    database = os.getenv('DB_NAME')
-    return pyodbc.connect(
-        f"Driver={{SQL Server}};Server={server};Database={database};Trusted_Connection=yes;",
-        timeout=60
-    )
-
 
 # UFs válidas — usado para filtros e validação visual
 UFS_VALIDAS = [
@@ -27,6 +16,22 @@ UFS_VALIDAS = [
     'MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN',
     'RS','RO','RR','SC','SP','SE','TO'
 ]
+
+
+def conectar_banco():
+    """Conexão usando pymssql"""
+    server = os.getenv('DB_SERVER')
+    database = os.getenv('DB_NAME')
+    user = os.getenv('DB_USER')
+    password = os.getenv('DB_PASSWORD')
+    
+    return pymssql.connect(
+        server=server,
+        user=user,
+        password=password,
+        database=database,
+        timeout=60
+    )
 
 
 @st.cache_data(ttl=3600)
@@ -48,7 +53,6 @@ def obter_kpis_gerais():
 
 @st.cache_data(ttl=3600)
 def obter_taxa_conversao():
-    """Taxa de clientes que têm o produto alvo (Atlas Consórcios)."""
     conexao = conectar_banco()
     query = """
     SELECT
@@ -240,7 +244,6 @@ def obter_curva_abc():
 
 @st.cache_data(ttl=3600)
 def obter_scatter_renda_ticket():
-    """Amostra de clientes para scatter plot de renda vs ticket."""
     conexao = conectar_banco()
     query = f"""
     SELECT TOP 2000
