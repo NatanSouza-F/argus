@@ -1,6 +1,3 @@
-"""
-Configurações compartilhadas do projeto.
-"""
 import pyodbc
 import logging
 import os
@@ -17,13 +14,11 @@ def configurar_logging():
     )
 
 def conectar_banco(tentativas=3):
-    """Conecta ao Azure SQL Database usando pyodbc com string otimizada"""
     server = os.getenv('DB_SERVER')
     database = os.getenv('DB_NAME')
     user = os.getenv('DB_USER')
     password = os.getenv('DB_PASSWORD')
     
-    # String de conexão padrão para Azure SQL
     connection_string = (
         f'DRIVER={{ODBC Driver 18 for SQL Server}};'
         f'SERVER={server},1433;'
