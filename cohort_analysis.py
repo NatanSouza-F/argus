@@ -7,7 +7,7 @@ import numpy as np
 import logging
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from config import conectar_banco, configurar_logging
 
 configurar_logging()
@@ -22,13 +22,11 @@ def calcular_cohort_matrix():
     try:
         conexao = conectar_banco()
         
-        # Primeiro, verifica quantos clientes existem
         cursor = conexao.cursor()
         cursor.execute("SELECT COUNT(*) FROM Dim_Clientes")
         total = cursor.fetchone()[0]
         log.info(f"Total de clientes na base: {total:,}")
         
-        # Query simplificada - sem filtro de data
         query_cohorts = """
         SELECT TOP 100000
             DATEFROMPARTS(YEAR(Data_Cadastro), MONTH(Data_Cadastro), 1) as cohort_month,
@@ -47,7 +45,6 @@ def calcular_cohort_matrix():
         
         log.info(f"Cohorts encontrados: {len(df_cohorts)}")
         
-        # Query para retenção
         query_retencao = """
         SELECT 
             DATEFROMPARTS(YEAR(c.Data_Cadastro), MONTH(c.Data_Cadastro), 1) as cohort_month,
@@ -65,11 +62,10 @@ def calcular_cohort_matrix():
         
         if df_retencao.empty:
             log.warning("Sem dados de retenção - criando dados simulados")
-            # Cria dados simulados para demonstração
             meses = ['Jan/2024', 'Fev/2024', 'Mar/2024', 'Abr/2024', 'Mai/2024', 'Jun/2024']
             dados = []
             for i, mes in enumerate(meses):
-                taxa_base = 85 - (i * 3)  # 85%, 82%, 79%, 76%, 73%, 70%
+                taxa_base = 85 - (i * 3)
                 for j in range(7):
                     if i + j < len(meses):
                         taxa = taxa_base * (0.92 ** j)
@@ -93,26 +89,21 @@ def calcular_cohort_matrix():
             
             return matriz, insights
         
-        # Merge dos dados reais
         df_result = df_cohorts.merge(df_retencao, on='cohort_month', how='left')
         df_result['clientes_ativos'] = df_result['clientes_ativos'].fillna(0)
         df_result['taxa_retencao'] = (df_result['clientes_ativos'] * 100.0 / df_result['total_clientes']).round(2)
         
-        # Cria matriz
         matriz = pd.DataFrame({
             0: df_result['taxa_retencao'].values
         }, index=df_result['cohort_month'])
         
-        # Formata índices
         matriz.index = pd.to_datetime(matriz.index).strftime('%b/%Y')
         
-        # Estima colunas futuras com decay
         for i in range(1, 7):
             matriz[i] = matriz[0] * (0.85 ** i)
         
         matriz = matriz.round(1)
         
-        # Insights
         retencao_m1 = matriz[0].mean() if 0 in matriz.columns else 0
         retencao_m3 = matriz[2].mean() if 2 in matriz.columns else 0
         retencao_m6 = matriz[5].mean() if 5 in matriz.columns else 0
