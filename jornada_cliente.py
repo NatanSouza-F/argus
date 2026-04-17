@@ -1,13 +1,12 @@
 """
 Análise de Jornada do Cliente - Sankey Diagram
 Mostra fluxo de produtos: 1º → 2º produto
-Versão que usa ID_Contrato como ordenação
 """
 import pandas as pd
 import logging
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from config import conectar_banco, configurar_logging
 
 configurar_logging()
@@ -17,7 +16,6 @@ log = logging.getLogger(__name__)
 def obter_jornada_produtos():
     """
     Extrai sequência de produtos por cliente
-    Usa ID_Contrato para ordenar (assume que IDs maiores = contratos mais recentes)
     """
     conexao = None
     try:
@@ -61,7 +59,6 @@ def obter_jornada_produtos():
             log.warning("Sem dados de jornada")
             return pd.DataFrame(), {'total_jornadas': 0, 'fluxos_churn': pd.DataFrame(), 'fluxos_sucesso': pd.DataFrame()}
         
-        # Identifica principais fluxos
         fluxos_churn = df[df['destino'] == 'Parou no primeiro'].nlargest(3, 'fluxo')
         fluxos_sucesso = df[df['destino'] != 'Parou no primeiro'].nlargest(5, 'fluxo')
         
