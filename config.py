@@ -2,7 +2,7 @@
 Configurações compartilhadas do projeto.
 Centraliza conexão com o banco e setup de logging.
 """
-import pyodbc
+import pymssql
 import logging
 import os
 from dotenv import load_dotenv
@@ -21,8 +21,13 @@ def configurar_logging():
 def conectar_banco():
     server = os.getenv('DB_SERVER')
     database = os.getenv('DB_NAME')
-    conexao = pyodbc.connect(
-        f"Driver={{SQL Server}};Server={server};Database={database};Trusted_Connection=yes;",
-        timeout=60  # aumenta tempo de espera para conexões em base grande
+    user = os.getenv('DB_USER')
+    password = os.getenv('DB_PASSWORD')
+    
+    return pymssql.connect(
+        server=server,
+        user=user,
+        password=password,
+        database=database,
+        timeout=60
     )
-    return conexao
