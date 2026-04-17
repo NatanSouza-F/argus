@@ -1,6 +1,5 @@
 """
 Configurações compartilhadas do projeto.
-Centraliza conexão com o banco e setup de logging.
 """
 import pymssql
 import logging
@@ -29,6 +28,7 @@ def conectar_banco():
         user=user,
         password=password,
         database=database,
-        timeout=60,
-        login_timeout=60
+        timeout=90,           # ← AUMENTADO para 90 segundos
+        login_timeout=60,     # ← Timeout de login
+        tds_version='7.0'     # ← Compatibilidade com Azure
     )
