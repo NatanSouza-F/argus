@@ -1,6 +1,6 @@
 """
 Sistema de autenticação do dashboard Argus.
-Tela de login com animação 3D de cards e layout perfeitamente alinhado.
+Tela de login com todos os elementos contidos em um único quadro centralizado.
 """
 import streamlit as st
 import os
@@ -43,218 +43,275 @@ def tela_login():
     if 'autenticado' in st.session_state and st.session_state.autenticado:
         return True
 
-    # Container principal com duas colunas – ambas centralizadas verticalmente
-    col_anim, col_form = st.columns([1.2, 1] if not is_mobile() else [1])
-
-    with col_anim:
-        # Wrapper que centraliza verticalmente todo o conteúdo da esquerda
-        st.markdown("""
-        <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-            .left-wrapper {
-                display: flex;
+    # Container principal que envolve TUDO (o "quadro vermelho")
+    st.markdown("""
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        
+        /* Fundo da página */
+        .stApp {
+            background: radial-gradient(circle at 10% 20%, rgba(240, 248, 255, 0.8), rgba(255, 255, 255, 0.95));
+        }
+        
+        /* Wrapper centralizador */
+        .login-outer {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        /* O QUADRO PRINCIPAL (glassmorphism) */
+        .login-main-card {
+            max-width: 1100px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            border-radius: 48px;
+            padding: 2.5rem 2rem;
+            box-shadow: 0 30px 50px -20px rgba(0,0,0,0.1);
+        }
+        
+        /* Grid interno: duas colunas */
+        .login-grid {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 2rem;
+        }
+        
+        .login-left {
+            flex: 1.2;
+            min-width: 300px;
+        }
+        
+        .login-right {
+            flex: 1;
+            min-width: 280px;
+        }
+        
+        /* Carrossel */
+        .login-carousel {
+            position: relative;
+            width: 100%;
+            height: 280px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            perspective: 1200px;
+            margin-bottom: 20px;
+        }
+        .login-card {
+            position: absolute;
+            width: 260px;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 32px;
+            padding: 20px 24px;
+            box-shadow: 0 20px 30px -10px rgba(0,0,0,0.1);
+            text-align: left;
+            transform-origin: center center;
+            animation: loginSlide 7.5s ease-in-out infinite;
+            opacity: 0;
+        }
+        @keyframes loginSlide {
+            0% { transform: translateX(180px) scale(0.8) rotateY(15deg); opacity: 0; z-index: 1; }
+            10% { opacity: 0.9; z-index: 5; }
+            25% { transform: translateX(0px) scale(1) rotateY(0deg); opacity: 1; z-index: 20; }
+            50% { transform: translateX(-60px) scale(0.95) rotateY(-5deg); opacity: 0.8; z-index: 10; }
+            75% { transform: translateX(-160px) scale(0.8) rotateY(-12deg); opacity: 0.3; z-index: 1; }
+            100% { transform: translateX(180px) scale(0.8) rotateY(15deg); opacity: 0; z-index: 1; }
+        }
+        .login-card-1 { animation-delay: 0s; }
+        .login-card-2 { animation-delay: 1.8s; }
+        .login-card-3 { animation-delay: 3.6s; }
+        .login-card-4 { animation-delay: 5.4s; }
+        
+        .argus-title {
+            font-family: 'Inter', sans-serif;
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #059669, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            letter-spacing: 6px;
+            margin: 0 0 4px 0;
+        }
+        .argus-slogan {
+            font-family: 'Inter', sans-serif;
+            font-size: 1rem;
+            color: #475569;
+            text-align: center;
+            font-weight: 400;
+            letter-spacing: 1px;
+        }
+        
+        .card-label {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #2c3e50;
+            letter-spacing: 0.3px;
+            margin-bottom: 6px;
+        }
+        .card-value {
+            font-family: 'Inter', sans-serif;
+            font-size: 2rem;
+            font-weight: 700;
+            color: #059669;
+            line-height: 1.2;
+        }
+        .card-trend {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem;
+            color: #64748b;
+            margin-top: 8px;
+        }
+        
+        /* Formulário */
+        .login-form-title {
+            font-family: 'Inter', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 0.5rem;
+        }
+        .login-form-subtitle {
+            font-family: 'Inter', sans-serif;
+            color: #64748b;
+            margin-bottom: 2rem;
+            font-size: 0.95rem;
+        }
+        
+        /* Inputs */
+        div[data-baseweb="input"] {
+            background: rgba(255, 255, 255, 0.9) !important;
+            border: 1px solid rgba(0, 255, 136, 0.4) !important;
+            border-radius: 40px !important;
+            margin-bottom: 1.2rem;
+        }
+        div[data-baseweb="input"] input {
+            color: #1e293b !important;
+            font-family: 'Inter', sans-serif !important;
+            padding: 0.8rem 1.2rem !important;
+        }
+        div[data-baseweb="input"] input::placeholder {
+            color: #94a3b8 !important;
+        }
+        
+        /* Botão */
+        .stButton button {
+            background: #00ff88 !important;
+            color: #0b1e2e !important;
+            border-radius: 40px !important;
+            font-weight: 600 !important;
+            padding: 0.7rem 1.5rem !important;
+            width: 100%;
+            border: none !important;
+            font-size: 1.05rem;
+        }
+        .stButton button:hover {
+            background: #00cc6a !important;
+            box-shadow: 0 8px 20px rgba(0,255,136,0.3);
+        }
+        
+        .login-footer {
+            margin-top: 20px;
+            color: #64748b;
+            font-size: 0.8rem;
+            text-align: left;
+        }
+        
+        /* Mobile */
+        @media (max-width: 768px) {
+            .login-main-card {
+                padding: 1.5rem;
+            }
+            .login-grid {
                 flex-direction: column;
-                justify-content: center;
-                align-items: center;
-                min-height: 600px;           /* altura consistente com a direita */
-                height: 100%;
+                gap: 1rem;
             }
             .login-carousel {
-                position: relative;
-                width: 100%;
-                height: 300px;                /* altura fixa para o carrossel */
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                perspective: 1200px;
-                margin-bottom: 20px;
+                height: 260px;
             }
-            .login-card {
-                position: absolute;
-                width: 280px;
-                background: rgba(255, 255, 255, 0.85);
-                backdrop-filter: blur(12px);
-                -webkit-backdrop-filter: blur(12px);
-                border: 1px solid rgba(0, 255, 136, 0.3);
-                border-radius: 32px;
-                padding: 24px 28px;
-                box-shadow: 0 25px 35px -10px rgba(0,0,0,0.15);
-                text-align: left;
-                transform-origin: center center;
-                animation: loginSlide 7.5s ease-in-out infinite;
-                opacity: 0;
+            .argus-title {
+                font-size: 2.5rem;
             }
-            @keyframes loginSlide {
-                0% { transform: translateX(200px) scale(0.8) rotateY(15deg); opacity: 0; z-index: 1; }
-                10% { opacity: 0.9; z-index: 5; }
-                25% { transform: translateX(0px) scale(1) rotateY(0deg); opacity: 1; z-index: 20; }
-                50% { transform: translateX(-70px) scale(0.95) rotateY(-5deg); opacity: 0.8; z-index: 10; }
-                75% { transform: translateX(-180px) scale(0.8) rotateY(-12deg); opacity: 0.3; z-index: 1; }
-                100% { transform: translateX(200px) scale(0.8) rotateY(15deg); opacity: 0; z-index: 1; }
-            }
-            .login-card-1 { animation-delay: 0s; }
-            .login-card-2 { animation-delay: 1.8s; }
-            .login-card-3 { animation-delay: 3.6s; }
-            .login-card-4 { animation-delay: 5.4s; }
-            .argus-login-title {
-                font-family: 'Inter', sans-serif;
-                font-size: 3.2rem;
-                font-weight: 800;
-                background: linear-gradient(135deg, #059669, #00ff88);
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                text-align: center;
-                margin-top: 0px;
-                letter-spacing: 8px;
-                text-shadow: 0 8px 20px rgba(0,255,136,0.15);
-            }
-            .login-slogan {
-                font-family: 'Inter', sans-serif;
-                font-size: 1rem;
-                color: #475569;
-                text-align: center;
-                margin-top: 6px;
-                font-weight: 400;
-                letter-spacing: 1px;
-            }
-            .card-label {
-                font-family: 'Inter', sans-serif;
-                font-size: 1rem;
-                font-weight: 600;
-                color: #2c3e50;
-                letter-spacing: 0.3px;
-                margin-bottom: 8px;
-            }
-            .card-value {
-                font-family: 'Inter', sans-serif;
-                font-size: 2.4rem;
-                font-weight: 700;
-                color: #059669;
-                line-height: 1.2;
-            }
-            .card-trend {
-                font-family: 'Inter', sans-serif;
-                font-size: 0.9rem;
-                color: #64748b;
-                margin-top: 10px;
-            }
-        </style>
-        <div class="left-wrapper">
-            <div class="login-carousel">
-                <div class="login-card login-card-1">
-                    <div class="card-label">📋 LEADS ATIVOS</div>
-                    <div class="card-value">2.431</div>
-                    <div class="card-trend">▲ +12% este mês</div>
-                </div>
-                <div class="login-card login-card-2">
-                    <div class="card-label">💰 RECEITA (MRR)</div>
-                    <div class="card-value">R$ 1.2M</div>
-                    <div class="card-trend">▲ +8.3% vs. anterior</div>
-                </div>
-                <div class="login-card login-card-3">
-                    <div class="card-label">🔄 CROSS-SELL</div>
-                    <div class="card-value">34.7%</div>
-                    <div class="card-trend">▲ +5.1pp últimos 30d</div>
-                </div>
-                <div class="login-card login-card-4">
-                    <div class="card-label">⚠️ EM RISCO</div>
-                    <div class="card-value">847</div>
-                    <div class="card-trend" style="color:#e67e22;">▼ -3% redução positiva</div>
-                </div>
-            </div>
-            <div class="argus-login-title">ARGUS</div>
-            <div class="login-slogan">A decisão certa começa com inteligência.</div>
-        </div>
-        """, unsafe_allow_html=True)
+        }
+    </style>
+    """, unsafe_allow_html=True)
 
-    with col_form:
-        st.markdown("""
-        <style>
-            .right-wrapper {
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                min-height: 600px;           /* mesma altura da esquerda */
-                height: 100%;
-                padding: 0 2rem;
-            }
-            .login-form-title {
-                font-family: 'Inter', sans-serif;
-                font-size: 2rem;
-                font-weight: 600;
-                color: #1e293b;
-                margin-bottom: 0.5rem;
-                text-align: left;
-            }
-            .login-form-subtitle {
-                font-family: 'Inter', sans-serif;
-                color: #64748b;
-                text-align: left;
-                margin-bottom: 2.5rem;
-                font-size: 1rem;
-            }
-            /* Estilo dos campos de entrada - fundo claro, texto escuro */
-            div[data-baseweb="input"] {
-                background: rgba(255, 255, 255, 0.9) !important;
-                border: 1px solid rgba(0, 255, 136, 0.4) !important;
-                border-radius: 40px !important;
-                margin-bottom: 1.2rem;
-            }
-            div[data-baseweb="input"] input {
-                color: #1e293b !important;
-                font-family: 'Inter', sans-serif !important;
-                padding: 0.9rem 1.2rem !important;
-            }
-            div[data-baseweb="input"] input::placeholder {
-                color: #94a3b8 !important;
-            }
-            /* Botão Entrar */
-            .stButton button {
-                background: #00ff88 !important;
-                color: #0b1e2e !important;
-                border-radius: 40px !important;
-                font-weight: 600 !important;
-                padding: 0.8rem 1.5rem !important;
-                width: 100%;
-                border: none !important;
-                font-size: 1.1rem;
-            }
-            .stButton button:hover {
-                background: #00cc6a !important;
-                box-shadow: 0 8px 20px rgba(0,255,136,0.3);
-            }
-            .login-footer {
-                text-align: left;
-                margin-top: 25px;
-                color: #64748b;
-                font-size: 0.8rem;
-            }
-        </style>
-        <div class="right-wrapper">
-            <div>
-                <div class="login-form-title">Acesse sua conta</div>
-                <div class="login-form-subtitle">Insira suas credenciais</div>
-        """, unsafe_allow_html=True)
-        
-        with st.form("login_form"):
-            usuario = st.text_input("Usuário", placeholder="Digite seu usuário", label_visibility="collapsed")
-            senha = st.text_input("Senha", type="password", placeholder="Digite sua senha", label_visibility="collapsed")
-            submit = st.form_submit_button("Entrar")
-            if submit:
-                if validar_credenciais(usuario, senha):
-                    st.session_state.autenticado = True
-                    st.session_state.usuario = usuario
-                    st.rerun()
-                else:
-                    st.error("Usuário ou senha incorretos")
-        
-        st.markdown("""
-                <div class="login-footer">
-                    Credenciais fornecidas pelo administrador • Ambiente seguro
-                </div>
+    # Estrutura HTML do quadro principal
+    st.markdown('<div class="login-outer">', unsafe_allow_html=True)
+    st.markdown('<div class="login-main-card">', unsafe_allow_html=True)
+    st.markdown('<div class="login-grid">', unsafe_allow_html=True)
+
+    # Coluna da esquerda: carrossel + título
+    st.markdown('<div class="login-left">', unsafe_allow_html=True)
+    st.markdown("""
+        <div class="login-carousel">
+            <div class="login-card login-card-1">
+                <div class="card-label">📋 LEADS ATIVOS</div>
+                <div class="card-value">2.431</div>
+                <div class="card-trend">▲ +12% este mês</div>
+            </div>
+            <div class="login-card login-card-2">
+                <div class="card-label">💰 RECEITA (MRR)</div>
+                <div class="card-value">R$ 1.2M</div>
+                <div class="card-trend">▲ +8.3% vs. anterior</div>
+            </div>
+            <div class="login-card login-card-3">
+                <div class="card-label">🔄 CROSS-SELL</div>
+                <div class="card-value">34.7%</div>
+                <div class="card-trend">▲ +5.1pp últimos 30d</div>
+            </div>
+            <div class="login-card login-card-4">
+                <div class="card-label">⚠️ EM RISCO</div>
+                <div class="card-value">847</div>
+                <div class="card-trend" style="color:#e67e22;">▼ -3% redução positiva</div>
             </div>
         </div>
-        """, unsafe_allow_html=True)
+        <div class="argus-title">ARGUS</div>
+        <div class="argus-slogan">A decisão certa começa com inteligência.</div>
+    </div>
+    """, unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)  # fecha login-left
+
+    # Coluna da direita: formulário
+    st.markdown('<div class="login-right">', unsafe_allow_html=True)
+    st.markdown("""
+        <div class="login-form-title">Acesse sua conta</div>
+        <div class="login-form-subtitle">Insira suas credenciais</div>
+    """, unsafe_allow_html=True)
+    
+    with st.form("login_form"):
+        usuario = st.text_input("Usuário", placeholder="Digite seu usuário", label_visibility="collapsed")
+        senha = st.text_input("Senha", type="password", placeholder="Digite sua senha", label_visibility="collapsed")
+        submit = st.form_submit_button("Entrar")
+        if submit:
+            if validar_credenciais(usuario, senha):
+                st.session_state.autenticado = True
+                st.session_state.usuario = usuario
+                st.rerun()
+            else:
+                st.error("Usuário ou senha incorretos")
+    
+    st.markdown("""
+        <div class="login-footer">
+            Credenciais fornecidas pelo administrador • Ambiente seguro
+        </div>
+    """, unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)  # fecha login-right
+
+    st.markdown('</div>', unsafe_allow_html=True)  # fecha login-grid
+    st.markdown('</div>', unsafe_allow_html=True)  # fecha login-main-card
+    st.markdown('</div>', unsafe_allow_html=True)  # fecha login-outer
 
     return False
 
