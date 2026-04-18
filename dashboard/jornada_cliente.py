@@ -1,6 +1,5 @@
 """
-Análise de Jornada do Cliente - Sankey Diagram
-Mostra fluxo de produtos: 1º → 2º produto
+Análise de Jornada do Cliente (Versão Otimizada)
 """
 import pandas as pd
 import logging
@@ -13,59 +12,31 @@ from config import conectar_banco, configurar_logging
 configurar_logging()
 log = logging.getLogger(__name__)
 
-# Corrige o path para encontrar o config.py
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-from config import conectar_banco, configurar_logging
-
-configurar_logging()
-log = logging.getLogger(__name__)
-
 
 def obter_jornada_produtos():
     """
-    Extrai sequência de produtos por cliente
+    Obtém a jornada priorizando a tabela de resumo.
     """
     conexao = None
     try:
         conexao = conectar_banco()
         
-        query = """
-        WITH produtos_ordenados AS (
-            SELECT 
-                ID_Cliente,
-                Produto,
-                ID_Contrato,
-                ROW_NUMBER() OVER (PARTITION BY ID_Cliente ORDER BY ID_Contrato) as ordem
-            FROM Fato_Contratos
-            WHERE Status_Contrato = 'Ativo'
-        ),
-        jornada AS (
-            SELECT 
-                p1.Produto as primeiro_produto,
-                p2.Produto as segundo_produto,
-                COUNT(DISTINCT p1.ID_Cliente) as total_clientes
-            FROM produtos_ordenados p1
-            LEFT JOIN produtos_ordenados p2 
-                ON p1.ID_Cliente = p2.ID_Cliente 
-                AND p2.ordem = 2
-            WHERE p1.ordem = 1
-            GROUP BY p1.Produto, p2.Produto
-        )
-        SELECT 
-            ISNULL(primeiro_produto, 'Sem produto') as origem,
-            ISNULL(segundo_produto, 'Parou no primeiro') as destino,
-            total_clientes as fluxo
-        FROM jornada
-        WHERE total_clientes >= 10
-        ORDER BY total_clientes DESC
+        # 1. Tenta obter da tabela de resumo (atualizada nas últimas 24h)
+        query_resumo = """
+        SELECT origem, destino, fluxo
+        FROM jornada_resumo
+        WHERE ultima_atualizacao >= DATEADD(hour, -24, GETDATE())
         """
         
-        log.info("Analisando jornada de produtos...")
-        df = pd.read_sql(query, conexao)
+        df = pd.read_sql(query_resumo, conexao)
+        
+        if not df.empty:
+            log.info("Jornada carregada da tabela de resumo (cache de 24h)")
+        else:
+            log.warning("Tabela de resumo desatualizada. Calculando online...")
+            df = calcular_jornada_online(conexao)
         
         if df.empty:
-            log.warning("Sem dados de jornada")
             return pd.DataFrame(), {'total_jornadas': 0, 'fluxos_churn': pd.DataFrame(), 'fluxos_sucesso': pd.DataFrame()}
         
         fluxos_churn = df[df['destino'] == 'Parou no primeiro'].nlargest(3, 'fluxo')
@@ -77,8 +48,6 @@ def obter_jornada_produtos():
             'total_jornadas': df['fluxo'].sum()
         }
         
-        log.info(f"Jornada analisada: {len(df)} fluxos, {insights['total_jornadas']:,} clientes")
-        
         return df, insights
         
     except Exception as erro:
@@ -89,17 +58,47 @@ def obter_jornada_produtos():
             conexao.close()
 
 
+def calcular_jornada_online(conexao):
+    """Fallback: cálculo online (usado se a tabela de resumo estiver vazia)"""
+    query = """
+    WITH produtos_ordenados AS (
+        SELECT 
+            ID_Cliente,
+            Produto,
+            ID_Contrato,
+            ROW_NUMBER() OVER (PARTITION BY ID_Cliente ORDER BY ID_Contrato) as ordem
+        FROM Fato_Contratos
+        WHERE Status_Contrato = 'Ativo'
+    ),
+    jornada AS (
+        SELECT 
+            p1.Produto as primeiro_produto,
+            p2.Produto as segundo_produto,
+            COUNT(DISTINCT p1.ID_Cliente) as total_clientes
+        FROM produtos_ordenados p1
+        LEFT JOIN produtos_ordenados p2 
+            ON p1.ID_Cliente = p2.ID_Cliente AND p2.ordem = 2
+        WHERE p1.ordem = 1
+        GROUP BY p1.Produto, p2.Produto
+    )
+    SELECT 
+        ISNULL(primeiro_produto, 'Sem produto') as origem,
+        ISNULL(segundo_produto, 'Parou no primeiro') as destino,
+        total_clientes as fluxo
+    FROM jornada
+    WHERE total_clientes >= 10
+    ORDER BY total_clientes DESC
+    """
+    return pd.read_sql(query, conexao)
+
+
 def identificar_oportunidades():
-    """
-    Identifica oportunidades de cross-sell baseado na jornada
-    """
+    """Identifica oportunidades de cross-sell"""
     df, insights = obter_jornada_produtos()
-    
     if df.empty:
         return pd.DataFrame()
     
     oportunidades = []
-    
     for _, row in insights['fluxos_sucesso'].iterrows():
         if row['destino'] != 'Parou no primeiro':
             total_origem = df[df['origem'] == row['origem']]['fluxo'].sum()
@@ -118,31 +117,4 @@ def identificar_oportunidades():
     return pd.DataFrame(oportunidades)
 
 
-def exportar_jornada():
-    """Exporta análise de jornada para Excel"""
-    from datetime import datetime
-    
-    df, insights = obter_jornada_produtos()
-    
-    if df.empty:
-        log.warning("Nada para exportar")
-        return
-    
-    oportunidades = identificar_oportunidades()
-    
-    data_hora = datetime.now().strftime('%Y%m%d_%H%M%S')
-    caminho = f'Atlas_Jornada_Cliente_{data_hora}.xlsx'
-    
-    with pd.ExcelWriter(caminho, engine='openpyxl') as writer:
-        df.to_excel(writer, sheet_name='Fluxos_Completos', index=False)
-        if not oportunidades.empty:
-            oportunidades.to_excel(writer, sheet_name='Oportunidades', index=False)
-        if not insights['fluxos_churn'].empty:
-            insights['fluxos_churn'].to_excel(writer, sheet_name='Fluxos_Churn', index=False)
-    
-    log.info(f"Relatório Jornada salvo: {caminho}")
-    return caminho
-
-
-if __name__ == "__main__":
-    exportar_jornada()
+# Mantenha as funções de exportação se desejar (não são usadas pelo dashboard)
