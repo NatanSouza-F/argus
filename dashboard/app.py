@@ -5,6 +5,7 @@ Interface principal com tema claro e responsividade mobile.
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
+import pandas as pd
 from datetime import datetime
 
 from autenticacao import tela_login, logout_button
@@ -275,48 +276,92 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
     "💰 Curva ABC",
 ])
 
+# ─── TAB 1: Top Leads (com filtros responsivos e WhatsApp) ─────────────────
+with tab1:
+    st.markdown("#### Filtros")
+    with st.expander("🔍 Filtrar Leads", expanded=not is_mobile()):
+        cols = st.columns([1, 1, 1] if not is_mobile() else [1])
+        try:
+            ufs_disponiveis = ["Todos"] + obter_lista_ufs()
+        except:
+            ufs_disponiveis = ["Todos"]
 
-# ─── TAB 1: Top Leads (com filtros responsivos) ──────────────────────
-if df_leads.empty:
-    st.warning("Nenhum lead encontrado com esses filtros.")
-else:
-    # Formata valores monetários
-    df_leads["Renda_Mensal_Fmt"] = df_leads["Renda_Mensal"].apply(
-        lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    )
-    df_leads["ticket_mensal_Fmt"] = df_leads["ticket_mensal"].apply(
-        lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    )
-    
-    # Cria mensagem personalizada para WhatsApp
-    df_leads["Mensagem"] = df_leads["Nome"].apply(
-        lambda nome: f"Olá {nome.split()[0]}, tudo bem? Vi que você é cliente Atlas e identifiquei uma oportunidade especial de consórcio. Podemos conversar?"
-    )
-    
-    # Cria link do WhatsApp
-    df_leads["WhatsApp"] = df_leads.apply(
-        lambda row: f"https://wa.me/{row['Telefone']}?text={row['Mensagem'].replace(' ', '%20')}", axis=1
-    )
-    
-    # Exibe tabela com coluna de ação
-    st.dataframe(
-        df_leads[["Nome", "UF", "Renda_Mensal_Fmt", "produtos_ativos", "ticket_mensal_Fmt", "WhatsApp"]]
-        .rename(columns={
-            "Renda_Mensal_Fmt": "Renda Mensal",
-            "produtos_ativos": "Produtos Ativos",
-            "ticket_mensal_Fmt": "Ticket Mensal",
-            "WhatsApp": "Ação"
-        }),
-        use_container_width=True,
-        hide_index=True,
-        height=600,
-        column_config={
-            "Ação": st.column_config.LinkColumn(
-                "📱 WhatsApp",
-                display_text="Abrir Chat"
+        with cols[0]:
+            uf_selecionada = st.selectbox("Estado (UF)", ufs_disponiveis, key="uf_leads")
+        with cols[1] if len(cols) > 1 else cols[0]:
+            renda_min_leads = st.slider(
+                "Renda mínima (R$)",
+                min_value=10000,
+                max_value=20000,
+                value=15000,
+                step=1000,
+                key="renda_leads",
             )
-        }
-    )
+        with cols[2] if len(cols) > 2 else cols[0]:
+            qtd_leads = st.slider(
+                "Quantidade de leads",
+                min_value=10,
+                max_value=100,
+                value=20,
+                step=10,
+                key="qtd_leads",
+            )
+
+    st.markdown(f"#### Top {qtd_leads} leads priorizados para Atlas Consórcios")
+
+    # Inicializa df_leads como DataFrame vazio para evitar NameError
+    df_leads = pd.DataFrame()
+
+    try:
+        df_leads = obter_top_leads(
+            renda_min=renda_min_leads,
+            uf_filtro=uf_selecionada,
+            limite=qtd_leads,
+        )
+
+        if df_leads.empty:
+            st.warning("Nenhum lead encontrado com esses filtros.")
+        else:
+            # Formata valores monetários
+            df_leads["Renda_Mensal_Fmt"] = df_leads["Renda_Mensal"].apply(
+                lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            )
+            df_leads["ticket_mensal_Fmt"] = df_leads["ticket_mensal"].apply(
+                lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            )
+
+            # Cria mensagem personalizada para WhatsApp
+            df_leads["Mensagem"] = df_leads["Nome"].apply(
+                lambda nome: f"Olá {nome.split()[0]}, tudo bem? Vi que você é cliente Atlas e identifiquei uma oportunidade especial de consórcio. Podemos conversar?"
+            )
+
+            # Cria link do WhatsApp
+            df_leads["WhatsApp"] = df_leads.apply(
+                lambda row: f"https://wa.me/{row['Telefone']}?text={row['Mensagem'].replace(' ', '%20')}",
+                axis=1
+            )
+
+            # Exibe tabela com coluna de ação
+            st.dataframe(
+                df_leads[["Nome", "UF", "Renda_Mensal_Fmt", "produtos_ativos", "ticket_mensal_Fmt", "WhatsApp"]]
+                .rename(columns={
+                    "Renda_Mensal_Fmt": "Renda Mensal",
+                    "produtos_ativos": "Produtos Ativos",
+                    "ticket_mensal_Fmt": "Ticket Mensal",
+                    "WhatsApp": "Ação"
+                }),
+                use_container_width=True,
+                hide_index=True,
+                height=600,
+                column_config={
+                    "Ação": st.column_config.LinkColumn(
+                        "📱 WhatsApp",
+                        display_text="Abrir Chat"
+                    )
+                }
+            )
+    except Exception as e:
+        st.error(f"Erro ao carregar leads: {e}")
 
 # ─── TAB 2: Segmentação RFM ─────────────────────────────────────────
 with tab2:
