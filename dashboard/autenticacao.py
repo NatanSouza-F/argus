@@ -1,6 +1,6 @@
 """
 Sistema de autenticação do dashboard Argus.
-Tela de login com animação 3D de cards e layout limpo.
+Tela de login com animação 3D de cards e layout refinado.
 """
 import streamlit as st
 import os
@@ -96,7 +96,7 @@ def tela_login():
                 -webkit-background-clip: text;
                 -webkit-text-fill-color: transparent;
                 text-align: center;
-                margin-top: 20px;
+                margin-top: 10px;               /* reduzido para aproximar dos cards */
                 letter-spacing: 8px;
                 text-shadow: 0 8px 20px rgba(0,255,136,0.15);
             }
@@ -105,7 +105,7 @@ def tela_login():
                 font-size: 1rem;
                 color: #475569;
                 text-align: center;
-                margin-top: 8px;
+                margin-top: 4px;                /* bem próximo do título */
                 font-weight: 400;
                 letter-spacing: 1px;
             }
@@ -164,15 +164,15 @@ def tela_login():
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
-                min-height: 500px;
-                padding: 0 1rem;
+                min-height: 520px;              /* mesma altura aproximada do conjunto da esquerda */
+                padding: 0 1.5rem;
             }
             .login-form-title {
                 font-family: 'Inter', sans-serif;
-                font-size: 1.8rem;
+                font-size: 1.9rem;
                 font-weight: 600;
                 color: #1e293b;
-                margin-bottom: 0.5rem;
+                margin-bottom: 0.3rem;
                 text-align: left;
             }
             .login-form-subtitle {
@@ -180,23 +180,19 @@ def tela_login():
                 color: #64748b;
                 text-align: left;
                 margin-bottom: 2rem;
-                font-size: 0.95rem;
-            }
-            .input-label {
-                font-family: 'Inter', sans-serif;
-                font-weight: 500;
-                color: #1e293b;
-                margin-bottom: 0.3rem;
+                font-size: 1rem;
             }
             /* Estilo dos campos de entrada - fundo claro, texto escuro */
             div[data-baseweb="input"] {
                 background: rgba(255, 255, 255, 0.9) !important;
-                border: 1px solid rgba(0, 255, 136, 0.3) !important;
+                border: 1px solid rgba(0, 255, 136, 0.4) !important;
                 border-radius: 40px !important;
+                margin-bottom: 1rem;
             }
             div[data-baseweb="input"] input {
                 color: #1e293b !important;
                 font-family: 'Inter', sans-serif !important;
+                padding: 0.8rem 1.2rem !important;
             }
             div[data-baseweb="input"] input::placeholder {
                 color: #94a3b8 !important;
@@ -209,6 +205,11 @@ def tela_login():
                 font-weight: 600 !important;
                 padding: 0.7rem 1.5rem !important;
                 width: 100%;
+                border: none !important;
+            }
+            .stButton button:hover {
+                background: #00cc6a !important;
+                box-shadow: 0 8px 20px rgba(0,255,136,0.3);
             }
         </style>
         <div class="login-form-wrapper">
@@ -219,7 +220,7 @@ def tela_login():
         with st.form("login_form"):
             usuario = st.text_input("Usuário", placeholder="Digite seu usuário", label_visibility="collapsed")
             senha = st.text_input("Senha", type="password", placeholder="Digite sua senha", label_visibility="collapsed")
-            submit = st.form_submit_button("Entrar", use_container_width=True)
+            submit = st.form_submit_button("Entrar")
             if submit:
                 if validar_credenciais(usuario, senha):
                     st.session_state.autenticado = True
