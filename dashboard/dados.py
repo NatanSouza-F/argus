@@ -260,34 +260,58 @@ def obter_lista_ufs():
 import joblib
 import os
 
+# ═══════════════════════════════════════════════════════════════
+# MODELO DE ML — fallback quando o modelo não existe
+# ═══════════════════════════════════════════════════════════════
+import joblib
+
+
 @st.cache_resource
 def carregar_modelo():
-    """Carrega o modelo preditivo treinado."""
-    caminho_modelo = os.path.join(os.path.dirname(__file__), '..', 'modelo_cross_sell.pkl')
+    """Carrega o modelo preditivo. Retorna (None, None) se não existir."""
+    caminho_modelo = os.path.join(
+        os.path.dirname(__file__), '..', 'modelo_cross_sell.pkl'
+    )
     if not os.path.exists(caminho_modelo):
-        return None
-    data = joblib.load(caminho_modelo)
-    return data['modelo'], data['features']
+        return None, None
+    try:
+        data = joblib.load(caminho_modelo)
+        return data['modelo'], data['features']
+    except Exception:
+        return None, None
+
 
 def prever_probabilidade(df_leads):
-    """Aplica o modelo aos leads e retorna array de probabilidades."""
+    """
+    Aplica o modelo aos leads e retorna array de probabilidades.
+    Se o modelo não existir, retorna scores ilustrativos baseados
+    em renda e produtos ativos (regra heurística).
+    """
     modelo, features = carregar_modelo()
-    if modelo is None:
-        return np.zeros(len(df_leads))
-    
-    # Prepara features no mesmo formato do treino
+
+    # Fallback heurístico quando o modelo não está treinado
+    if modelo is None or features is None:
+        scores = []
+        for _, row in df_leads.iterrows():
+            renda = row.get('Renda_Mensal', 0)
+            produtos = row.get('produtos_ativos', 0)
+            # Score entre 0 e 1, ponderando renda e produtos
+            score_renda = min(renda / 20000, 1.0)
+            score_produtos = min(produtos / 4, 1.0)
+            score_final = (score_renda * 0.7 + score_produtos * 0.3)
+            scores.append(round(score_final, 3))
+        return np.array(scores)
+
+    # Quando o modelo real existir
     df = df_leads.copy()
-    # One-hot encoding para UF (deve coincidir com as top UFs do treino)
-    top_ufs = [f.split('_')[1] for f in features if f.startswith('UF_') and f != 'UF_OUTROS']
+    top_ufs = [f.split('_')[1] for f in features
+               if f.startswith('UF_') and f != 'UF_OUTROS']
     df['UF_agg'] = df['UF'].apply(lambda x: x if x in top_ufs else 'OUTROS')
     df = pd.get_dummies(df, columns=['UF_agg'], prefix='UF')
-    
-    # Garante que todas as colunas esperadas existam
+
     for col in features:
         if col not in df.columns:
             df[col] = 0
     X = df[features]
-    
-    # Probabilidade da classe positiva (target=1)
-    probas = modelo.predict_proba(X)[:, 1]
-    return probas
+
+    return modelo.predict_proba(X)[:, 1]
