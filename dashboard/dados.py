@@ -3,6 +3,7 @@ Camada de acesso a dados do dashboard Argus.
 """
 import pyodbc
 import pandas as pd
+import numpy as np
 import streamlit as st
 import os
 from dotenv import load_dotenv
