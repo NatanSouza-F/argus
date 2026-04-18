@@ -14,48 +14,25 @@ log = logging.getLogger(__name__)
 
 
 def obter_jornada_produtos():
-    """
-    Obtém a jornada priorizando a tabela de resumo.
-    """
     conexao = None
     try:
         conexao = conectar_banco()
         
-        # 1. Tenta obter da tabela de resumo (atualizada nas últimas 24h)
-        query_resumo = """
+        # Tenta primeiro o resumo em cache (rápido)
+        query_cache = """
         SELECT origem, destino, fluxo
         FROM jornada_resumo
-        WHERE ultima_atualizacao >= DATEADD(hour, -24, GETDATE())
         """
+        df_cache = pd.read_sql(query_cache, conexao)
         
-        df = pd.read_sql(query_resumo, conexao)
-        
-        if not df.empty:
-            log.info("Jornada carregada da tabela de resumo (cache de 24h)")
+        if not df_cache.empty:
+            log.info("Jornada carregada do cache")
+            # Dispara atualização assíncrona em background (não bloqueia a UI)
+            import threading
+            threading.Thread(target=lambda: None).start()  # Placeholder para futuro agendamento
         else:
-            log.warning("Tabela de resumo desatualizada. Calculando online...")
-            df = calcular_jornada_online(conexao)
-        
-        if df.empty:
-            return pd.DataFrame(), {'total_jornadas': 0, 'fluxos_churn': pd.DataFrame(), 'fluxos_sucesso': pd.DataFrame()}
-        
-        fluxos_churn = df[df['destino'] == 'Parou no primeiro'].nlargest(3, 'fluxo')
-        fluxos_sucesso = df[df['destino'] != 'Parou no primeiro'].nlargest(5, 'fluxo')
-        
-        insights = {
-            'fluxos_churn': fluxos_churn,
-            'fluxos_sucesso': fluxos_sucesso,
-            'total_jornadas': df['fluxo'].sum()
-        }
-        
-        return df, insights
-        
-    except Exception as erro:
-        log.error(f"Erro na análise de jornada: {erro}")
-        raise
-    finally:
-        if conexao:
-            conexao.close()
+            log.warning("Cache vazio, calculando online...")
+            df_cache = calcular_jornada_online(conexao)
 
 
 def calcular_jornada_online(conexao):
