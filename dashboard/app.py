@@ -39,6 +39,21 @@ def is_mobile():
     except:
         return False
 
+# ═══════════════════════════════════════════════════════
+# PWA - Manifest e Service Worker
+# ═══════════════════════════════════════════════════════
+st.markdown("""
+<link rel="manifest" href="/manifest.json">
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then(reg => console.log('Service Worker registrado!', reg))
+        .catch(err => console.log('Falha no Service Worker', err));
+    });
+  }
+</script>
+""", unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════
 # CONFIGURAÇÃO DA PÁGINA
