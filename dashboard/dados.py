@@ -123,6 +123,7 @@ def obter_top_leads(renda_min=15000, uf_filtro=None, limite=20):
     where_uf = f"AND c.UF = '{uf_filtro}'" if uf_filtro and uf_filtro != "Todos" else ""
     query = f"""
     SELECT TOP {limite}
+        c.ID_Cliente,
         c.Nome,
         c.UF,
         c.Renda_Mensal,
@@ -144,6 +145,10 @@ def obter_top_leads(renda_min=15000, uf_filtro=None, limite=20):
     """
     df = pd.read_sql(query, conexao)
     conexao.close()
+    
+    # Gera telefone fictício baseado no ID (substituir por coluna real quando disponível)
+    df['Telefone'] = df['ID_Cliente'].apply(lambda x: f"55{ (x % 999999999) + 1100000000 }")
+    
     return df
 
 @st.cache_data(ttl=3600)
