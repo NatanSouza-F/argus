@@ -14,29 +14,52 @@ log = logging.getLogger(__name__)
 
 
 def obter_jornada_produtos():
+    """
+    Obtém a jornada priorizando a tabela de resumo.
+    """
     conexao = None
     try:
         conexao = conectar_banco()
         
-        # Tenta primeiro o resumo em cache (rápido)
-        query_cache = """
+        # Tenta obter da tabela de resumo
+        query_resumo = """
         SELECT origem, destino, fluxo
         FROM jornada_resumo
+        WHERE ultima_atualizacao >= DATEADD(hour, -24, GETDATE())
         """
-        df_cache = pd.read_sql(query_cache, conexao)
         
-        if not df_cache.empty:
-            log.info("Jornada carregada do cache")
-            # Dispara atualização assíncrona em background (não bloqueia a UI)
-            import threading
-            threading.Thread(target=lambda: None).start()  # Placeholder para futuro agendamento
+        df = pd.read_sql(query_resumo, conexao)
+        
+        if not df.empty:
+            log.info("Jornada carregada da tabela de resumo (cache de 24h)")
         else:
-            log.warning("Cache vazio, calculando online...")
-            df_cache = calcular_jornada_online(conexao)
+            log.warning("Tabela de resumo desatualizada. Calculando online...")
+            df = calcular_jornada_online(conexao)
+        
+        if df.empty:
+            return pd.DataFrame(), {'total_jornadas': 0, 'fluxos_churn': pd.DataFrame(), 'fluxos_sucesso': pd.DataFrame()}
+        
+        fluxos_churn = df[df['destino'] == 'Parou no primeiro'].nlargest(3, 'fluxo')
+        fluxos_sucesso = df[df['destino'] != 'Parou no primeiro'].nlargest(5, 'fluxo')
+        
+        insights = {
+            'fluxos_churn': fluxos_churn,
+            'fluxos_sucesso': fluxos_sucesso,
+            'total_jornadas': df['fluxo'].sum()
+        }
+        
+        return df, insights
+        
+    except Exception as erro:
+        log.error(f"Erro na análise de jornada: {erro}")
+        raise
+    finally:
+        if conexao:
+            conexao.close()
 
 
 def calcular_jornada_online(conexao):
-    """Fallback: cálculo online (usado se a tabela de resumo estiver vazia)"""
+    """Fallback: cálculo online"""
     query = """
     WITH produtos_ordenados AS (
         SELECT 
@@ -94,4 +117,29 @@ def identificar_oportunidades():
     return pd.DataFrame(oportunidades)
 
 
-# Mantenha as funções de exportação se desejar (não são usadas pelo dashboard)
+def exportar_jornada():
+    """Exporta análise de jornada para Excel"""
+    from datetime import datetime
+    
+    df, insights = obter_jornada_produtos()
+    if df.empty:
+        return
+    
+    oportunidades = identificar_oportunidades()
+    
+    data_hora = datetime.now().strftime('%Y%m%d_%H%M%S')
+    caminho = f'Atlas_Jornada_Cliente_{data_hora}.xlsx'
+    
+    with pd.ExcelWriter(caminho, engine='openpyxl') as writer:
+        df.to_excel(writer, sheet_name='Fluxos_Completos', index=False)
+        if not oportunidades.empty:
+            oportunidades.to_excel(writer, sheet_name='Oportunidades', index=False)
+        if not insights['fluxos_churn'].empty:
+            insights['fluxos_churn'].to_excel(writer, sheet_name='Fluxos_Churn', index=False)
+    
+    log.info(f"Relatório Jornada salvo: {caminho}")
+    return caminho
+
+
+if __name__ == "__main__":
+    exportar_jornada()
