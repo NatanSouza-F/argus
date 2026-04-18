@@ -1,6 +1,6 @@
 """
 Dashboard Argus — Revenue Intelligence
-Interface principal com tema claro e responsividade mobile.
+Interface completa com tema claro, comando de voz, PWA e modelo preditivo.
 """
 import streamlit as st
 import plotly.express as px
@@ -21,6 +21,7 @@ from dados import (
     obter_curva_abc,
     obter_scatter_renda_ticket,
     obter_lista_ufs,
+    prever_probabilidade,      # ← modelo preditivo
 )
 
 # NOVOS IMPORTS - ANÁLISES AVANÇADAS
@@ -39,21 +40,6 @@ def is_mobile():
     except:
         return False
 
-# ═══════════════════════════════════════════════════════
-# PWA - Manifest e Service Worker
-# ═══════════════════════════════════════════════════════
-st.markdown("""
-<link rel="manifest" href="/manifest.json">
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js')
-        .then(reg => console.log('Service Worker registrado!', reg))
-        .catch(err => console.log('Falha no Service Worker', err));
-    });
-  }
-</script>
-""", unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════
 # CONFIGURAÇÃO DA PÁGINA
@@ -70,16 +56,12 @@ st.set_page_config(
 # ═══════════════════════════════════════════════════════
 st.markdown("""
 <style>
-    /* Fundo claro e tipografia limpa */
     .stApp { background: #f8fafc; }
-    
     h1, h2, h3, h4 {
         color: #1e293b !important;
         font-family: 'Inter', system-ui, sans-serif;
         font-weight: 600;
     }
-    
-    /* Métricas (cards) */
     [data-testid="stMetric"] {
         background: white;
         border: 1px solid #e2e8f0;
@@ -88,21 +70,17 @@ st.markdown("""
         border-radius: 16px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.02);
     }
-    
     [data-testid="stMetricLabel"] {
         color: #64748b !important;
         font-size: 12px !important;
         font-weight: 500;
         letter-spacing: 0.5px;
     }
-    
     [data-testid="stMetricValue"] {
-        color: #059669 !important;  /* Verde esmeralda */
+        color: #059669 !important;
         font-size: 28px !important;
         font-weight: 700 !important;
     }
-    
-    /* Botões */
     .stButton button {
         background: #00ff88 !important;
         color: #0f172a !important;
@@ -112,18 +90,14 @@ st.markdown("""
         padding: 8px 20px;
         transition: 0.2s;
     }
-    
     .stButton button:hover {
         background: #00cc6a !important;
         box-shadow: 0 4px 12px rgba(0,255,136,0.3);
     }
-    
-    /* Tabs */
     .stTabs [data-baseweb="tab-list"] {
         background: transparent;
         gap: 8px;
     }
-    
     .stTabs [data-baseweb="tab"] {
         background: white;
         color: #475569;
@@ -133,22 +107,17 @@ st.markdown("""
         font-weight: 500;
         margin-right: 4px;
     }
-    
     .stTabs [aria-selected="true"] {
         background: #00ff88 !important;
         color: #0f172a !important;
         border-color: #00ff88 !important;
     }
-    
-    /* DataFrames */
     .stDataFrame {
         background: white;
         border: 1px solid #e2e8f0;
         border-radius: 16px;
         padding: 4px;
     }
-    
-    /* Expander (filtros) */
     .streamlit-expanderHeader {
         background: white;
         border: 1px solid #e2e8f0;
@@ -156,14 +125,11 @@ st.markdown("""
         font-weight: 500;
         color: #1e293b;
     }
-    
-    /* Cabeçalho Argus */
     .argus-header {
         padding: 24px 0 16px 0;
         border-bottom: 2px solid #00ff88;
         margin-bottom: 24px;
     }
-    
     .argus-logo {
         font-family: 'Inter', sans-serif;
         font-size: 36px;
@@ -171,20 +137,34 @@ st.markdown("""
         color: #059669;
         letter-spacing: -0.5px;
     }
-    
     .argus-tagline {
         color: #64748b;
         font-size: 13px;
         font-weight: 400;
         letter-spacing: 1px;
     }
-    
-    /* Ajustes mobile */
     @media (max-width: 768px) {
         .argus-logo { font-size: 28px; }
         [data-testid="stMetric"] { padding: 12px; }
     }
 </style>
+""", unsafe_allow_html=True)
+
+
+# ═══════════════════════════════════════════════════════
+# PWA - Manifest e Service Worker
+# ═══════════════════════════════════════════════════════
+st.markdown("""
+<link rel="manifest" href="/manifest.json">
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then(reg => console.log('Service Worker registrado!', reg))
+        .catch(err => console.log('Falha no Service Worker', err));
+    });
+  }
+</script>
 """, unsafe_allow_html=True)
 
 
@@ -291,7 +271,8 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
     "💰 Curva ABC",
 ])
 
-# ─── TAB 1: Top Leads (com filtros responsivos e WhatsApp) ─────────────────
+
+# ─── TAB 1: Top Leads (com WhatsApp, Voz e Modelo Preditivo) ─────────────
 with tab1:
     st.markdown("#### Filtros")
     with st.expander("🔍 Filtrar Leads", expanded=not is_mobile()):
@@ -301,32 +282,98 @@ with tab1:
         except:
             ufs_disponiveis = ["Todos"]
 
+        # Captura comandos de voz via query params
+        query_params = st.query_params
+        uf_voz = query_params.get("uf_voz", None)
+        renda_voz = query_params.get("renda_voz", None)
+
+        default_uf = uf_voz if uf_voz in ufs_disponiveis else "Todos"
+        default_renda = int(renda_voz) if renda_voz and renda_voz.isdigit() else 15000
+
         with cols[0]:
-            uf_selecionada = st.selectbox("Estado (UF)", ufs_disponiveis, key="uf_leads")
+            uf_selecionada = st.selectbox(
+                "Estado (UF)", ufs_disponiveis,
+                index=ufs_disponiveis.index(default_uf) if default_uf in ufs_disponiveis else 0,
+                key="uf_leads"
+            )
         with cols[1] if len(cols) > 1 else cols[0]:
             renda_min_leads = st.slider(
                 "Renda mínima (R$)",
-                min_value=10000,
-                max_value=20000,
-                value=15000,
-                step=1000,
+                min_value=10000, max_value=20000, value=default_renda, step=1000,
                 key="renda_leads",
             )
         with cols[2] if len(cols) > 2 else cols[0]:
             qtd_leads = st.slider(
                 "Quantidade de leads",
-                min_value=10,
-                max_value=100,
-                value=20,
-                step=10,
+                min_value=10, max_value=100, value=20, step=10,
                 key="qtd_leads",
             )
 
+    # Botão de comando de voz
+    st.markdown("---")
+    col_voz, _ = st.columns([1, 3])
+    with col_voz:
+        voz_acionado = st.button("🎤 Comando de Voz", help="Fale algo como 'Estado São Paulo, renda mínima 15 mil'")
+
+    if voz_acionado:
+        st.components.v1.html("""
+        <script>
+        (function() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert('Seu navegador não suporta reconhecimento de voz. Use Chrome ou Edge.');
+                return;
+            }
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'pt-BR';
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript.toLowerCase();
+                console.log('Você disse:', transcript);
+                
+                let uf = null;
+                let renda = null;
+                
+                const ufs = ['ac','al','ap','am','ba','ce','df','es','go','ma','mt','ms','mg','pa','pb','pr','pe','pi','rj','rn','rs','ro','rr','sc','sp','se','to'];
+                for (let sigla of ufs) {
+                    if (transcript.includes(sigla)) {
+                        uf = sigla.toUpperCase();
+                        break;
+                    }
+                }
+                if (transcript.includes('são paulo')) uf = 'SP';
+                else if (transcript.includes('rio de janeiro')) uf = 'RJ';
+                else if (transcript.includes('minas gerais')) uf = 'MG';
+                
+                const rendaMatch = transcript.match(/renda\s*(?:mínima\s*)?(?:de\s*)?(\d+)\s*(?:mil)?/i) ||
+                                  transcript.match(/(\d+)\s*mil/i);
+                if (rendaMatch) {
+                    let valor = parseInt(rendaMatch[1]);
+                    if (transcript.includes('mil') && valor < 1000) valor *= 1000;
+                    renda = valor;
+                }
+                
+                const params = new URLSearchParams(window.location.search);
+                if (uf) params.set('uf_voz', uf);
+                if (renda) params.set('renda_voz', renda);
+                const newUrl = window.location.pathname + '?' + params.toString();
+                window.location.href = newUrl;
+            };
+
+            recognition.onerror = (event) => {
+                alert('Erro no reconhecimento: ' + event.error);
+            };
+
+            recognition.start();
+        })();
+        </script>
+        """, height=0)
+
     st.markdown(f"#### Top {qtd_leads} leads priorizados para Atlas Consórcios")
 
-    # Inicializa df_leads como DataFrame vazio para evitar NameError
     df_leads = pd.DataFrame()
-
     try:
         df_leads = obter_top_leads(
             renda_min=renda_min_leads,
@@ -337,7 +384,7 @@ with tab1:
         if df_leads.empty:
             st.warning("Nenhum lead encontrado com esses filtros.")
         else:
-            # Formata valores monetários
+            # Formata valores
             df_leads["Renda_Mensal_Fmt"] = df_leads["Renda_Mensal"].apply(
                 lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
             )
@@ -345,38 +392,43 @@ with tab1:
                 lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
             )
 
-            # Cria mensagem personalizada para WhatsApp
+            # Mensagem WhatsApp
             df_leads["Mensagem"] = df_leads["Nome"].apply(
                 lambda nome: f"Olá {nome.split()[0]}, tudo bem? Vi que você é cliente Atlas e identifiquei uma oportunidade especial de consórcio. Podemos conversar?"
             )
-
-            # Cria link do WhatsApp
             df_leads["WhatsApp"] = df_leads.apply(
                 lambda row: f"https://wa.me/{row['Telefone']}?text={row['Mensagem'].replace(' ', '%20')}",
                 axis=1
             )
 
-            # Exibe tabela com coluna de ação
+            # Modelo preditivo
+            try:
+                probabilidades = prever_probabilidade(df_leads)
+                df_leads['Probabilidade'] = (probabilidades * 100).round(1).astype(str) + '%'
+            except Exception as e:
+                df_leads['Probabilidade'] = 'N/A'
+
+            colunas_exibir = ["Nome", "UF", "Renda_Mensal_Fmt", "produtos_ativos", "ticket_mensal_Fmt", "Probabilidade", "WhatsApp"]
+            mapeamento = {
+                "Renda_Mensal_Fmt": "Renda Mensal",
+                "produtos_ativos": "Produtos Ativos",
+                "ticket_mensal_Fmt": "Ticket Mensal",
+                "WhatsApp": "Ação",
+                "Probabilidade": "🤖 Prob. Conversão"
+            }
+
             st.dataframe(
-                df_leads[["Nome", "UF", "Renda_Mensal_Fmt", "produtos_ativos", "ticket_mensal_Fmt", "WhatsApp"]]
-                .rename(columns={
-                    "Renda_Mensal_Fmt": "Renda Mensal",
-                    "produtos_ativos": "Produtos Ativos",
-                    "ticket_mensal_Fmt": "Ticket Mensal",
-                    "WhatsApp": "Ação"
-                }),
+                df_leads[colunas_exibir].rename(columns=mapeamento),
                 use_container_width=True,
                 hide_index=True,
                 height=600,
                 column_config={
-                    "Ação": st.column_config.LinkColumn(
-                        "📱 WhatsApp",
-                        display_text="Abrir Chat"
-                    )
+                    "Ação": st.column_config.LinkColumn("📱 WhatsApp", display_text="Abrir Chat")
                 }
             )
     except Exception as e:
         st.error(f"Erro ao carregar leads: {e}")
+
 
 # ─── TAB 2: Segmentação RFM ─────────────────────────────────────────
 with tab2:
