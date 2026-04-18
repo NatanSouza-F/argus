@@ -1,6 +1,6 @@
 """
 Sistema de autenticação do dashboard Argus.
-Tela de login com animação 3D de cards e layout refinado.
+Tela de login com animação 3D de cards e layout perfeitamente alinhado.
 """
 import streamlit as st
 import os
@@ -43,23 +43,31 @@ def tela_login():
     if 'autenticado' in st.session_state and st.session_state.autenticado:
         return True
 
-    # Container principal com duas colunas (animação + formulário)
+    # Container principal com duas colunas – ambas centralizadas verticalmente
     col_anim, col_form = st.columns([1.2, 1] if not is_mobile() else [1])
 
     with col_anim:
-        # Animação 3D contínua (carrossel de cards)
+        # Wrapper que centraliza verticalmente todo o conteúdo da esquerda
         st.markdown("""
         <style>
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+            .left-wrapper {
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                min-height: 600px;           /* altura consistente com a direita */
+                height: 100%;
+            }
             .login-carousel {
                 position: relative;
                 width: 100%;
-                height: 340px;
+                height: 300px;                /* altura fixa para o carrossel */
                 display: flex;
                 justify-content: center;
                 align-items: center;
                 perspective: 1200px;
-                margin-top: 30px;
+                margin-bottom: 20px;
             }
             .login-card {
                 position: absolute;
@@ -96,7 +104,7 @@ def tela_login():
                 -webkit-background-clip: text;
                 -webkit-text-fill-color: transparent;
                 text-align: center;
-                margin-top: 10px;               /* reduzido para aproximar dos cards */
+                margin-top: 0px;
                 letter-spacing: 8px;
                 text-shadow: 0 8px 20px rgba(0,255,136,0.15);
             }
@@ -105,7 +113,7 @@ def tela_login():
                 font-size: 1rem;
                 color: #475569;
                 text-align: center;
-                margin-top: 4px;                /* bem próximo do título */
+                margin-top: 6px;
                 font-weight: 400;
                 letter-spacing: 1px;
             }
@@ -131,55 +139,58 @@ def tela_login():
                 margin-top: 10px;
             }
         </style>
-        <div class="login-carousel">
-            <div class="login-card login-card-1">
-                <div class="card-label">📋 LEADS ATIVOS</div>
-                <div class="card-value">2.431</div>
-                <div class="card-trend">▲ +12% este mês</div>
+        <div class="left-wrapper">
+            <div class="login-carousel">
+                <div class="login-card login-card-1">
+                    <div class="card-label">📋 LEADS ATIVOS</div>
+                    <div class="card-value">2.431</div>
+                    <div class="card-trend">▲ +12% este mês</div>
+                </div>
+                <div class="login-card login-card-2">
+                    <div class="card-label">💰 RECEITA (MRR)</div>
+                    <div class="card-value">R$ 1.2M</div>
+                    <div class="card-trend">▲ +8.3% vs. anterior</div>
+                </div>
+                <div class="login-card login-card-3">
+                    <div class="card-label">🔄 CROSS-SELL</div>
+                    <div class="card-value">34.7%</div>
+                    <div class="card-trend">▲ +5.1pp últimos 30d</div>
+                </div>
+                <div class="login-card login-card-4">
+                    <div class="card-label">⚠️ EM RISCO</div>
+                    <div class="card-value">847</div>
+                    <div class="card-trend" style="color:#e67e22;">▼ -3% redução positiva</div>
+                </div>
             </div>
-            <div class="login-card login-card-2">
-                <div class="card-label">💰 RECEITA (MRR)</div>
-                <div class="card-value">R$ 1.2M</div>
-                <div class="card-trend">▲ +8.3% vs. anterior</div>
-            </div>
-            <div class="login-card login-card-3">
-                <div class="card-label">🔄 CROSS-SELL</div>
-                <div class="card-value">34.7%</div>
-                <div class="card-trend">▲ +5.1pp últimos 30d</div>
-            </div>
-            <div class="login-card login-card-4">
-                <div class="card-label">⚠️ EM RISCO</div>
-                <div class="card-value">847</div>
-                <div class="card-trend" style="color:#e67e22;">▼ -3% redução positiva</div>
-            </div>
+            <div class="argus-login-title">ARGUS</div>
+            <div class="login-slogan">A decisão certa começa com inteligência.</div>
         </div>
-        <div class="argus-login-title">ARGUS</div>
-        <div class="login-slogan">A decisão certa começa com inteligência.</div>
         """, unsafe_allow_html=True)
 
     with col_form:
         st.markdown("""
         <style>
-            .login-form-wrapper {
+            .right-wrapper {
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
-                min-height: 520px;              /* mesma altura aproximada do conjunto da esquerda */
-                padding: 0 1.5rem;
+                min-height: 600px;           /* mesma altura da esquerda */
+                height: 100%;
+                padding: 0 2rem;
             }
             .login-form-title {
                 font-family: 'Inter', sans-serif;
-                font-size: 1.9rem;
+                font-size: 2rem;
                 font-weight: 600;
                 color: #1e293b;
-                margin-bottom: 0.3rem;
+                margin-bottom: 0.5rem;
                 text-align: left;
             }
             .login-form-subtitle {
                 font-family: 'Inter', sans-serif;
                 color: #64748b;
                 text-align: left;
-                margin-bottom: 2rem;
+                margin-bottom: 2.5rem;
                 font-size: 1rem;
             }
             /* Estilo dos campos de entrada - fundo claro, texto escuro */
@@ -187,12 +198,12 @@ def tela_login():
                 background: rgba(255, 255, 255, 0.9) !important;
                 border: 1px solid rgba(0, 255, 136, 0.4) !important;
                 border-radius: 40px !important;
-                margin-bottom: 1rem;
+                margin-bottom: 1.2rem;
             }
             div[data-baseweb="input"] input {
                 color: #1e293b !important;
                 font-family: 'Inter', sans-serif !important;
-                padding: 0.8rem 1.2rem !important;
+                padding: 0.9rem 1.2rem !important;
             }
             div[data-baseweb="input"] input::placeholder {
                 color: #94a3b8 !important;
@@ -203,18 +214,26 @@ def tela_login():
                 color: #0b1e2e !important;
                 border-radius: 40px !important;
                 font-weight: 600 !important;
-                padding: 0.7rem 1.5rem !important;
+                padding: 0.8rem 1.5rem !important;
                 width: 100%;
                 border: none !important;
+                font-size: 1.1rem;
             }
             .stButton button:hover {
                 background: #00cc6a !important;
                 box-shadow: 0 8px 20px rgba(0,255,136,0.3);
             }
+            .login-footer {
+                text-align: left;
+                margin-top: 25px;
+                color: #64748b;
+                font-size: 0.8rem;
+            }
         </style>
-        <div class="login-form-wrapper">
-            <div class="login-form-title">Acesse sua conta</div>
-            <div class="login-form-subtitle">Insira suas credenciais</div>
+        <div class="right-wrapper">
+            <div>
+                <div class="login-form-title">Acesse sua conta</div>
+                <div class="login-form-subtitle">Insira suas credenciais</div>
         """, unsafe_allow_html=True)
         
         with st.form("login_form"):
@@ -230,9 +249,10 @@ def tela_login():
                     st.error("Usuário ou senha incorretos")
         
         st.markdown("""
-        <div style="text-align:left; margin-top:20px; color:#64748b; font-size:0.8rem;">
-            Credenciais fornecidas pelo administrador • Ambiente seguro
-        </div>
+                <div class="login-footer">
+                    Credenciais fornecidas pelo administrador • Ambiente seguro
+                </div>
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
