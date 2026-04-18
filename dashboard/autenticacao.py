@@ -64,55 +64,55 @@ def tela_login():
         
         /* O QUADRO PRINCIPAL (glassmorphism) */
         .login-main-card {
-            max-width: 1100px;
+            max-width: 1000px;
             width: 100%;
-            background: rgba(255, 255, 255, 0.6);
+            background: rgba(255, 255, 255, 0.5);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
             border: 1px solid rgba(0, 255, 136, 0.2);
             border-radius: 48px;
-            padding: 2.5rem 2rem;
+            padding: 2rem 1.8rem;
             box-shadow: 0 30px 50px -20px rgba(0,0,0,0.1);
         }
         
-        /* Grid interno: duas colunas */
+        /* Grid interno: duas colunas perfeitamente alinhadas */
         .login-grid {
             display: flex;
             flex-wrap: wrap;
-            align-items: center;
-            gap: 2rem;
+            align-items: center;      /* centraliza verticalmente */
+            gap: 1.5rem;
         }
         
         .login-left {
             flex: 1.2;
-            min-width: 300px;
+            min-width: 280px;
         }
         
         .login-right {
             flex: 1;
-            min-width: 280px;
+            min-width: 260px;
         }
         
         /* Carrossel */
         .login-carousel {
             position: relative;
             width: 100%;
-            height: 280px;
+            height: 260px;
             display: flex;
             justify-content: center;
             align-items: center;
             perspective: 1200px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
         .login-card {
             position: absolute;
-            width: 260px;
-            background: rgba(255, 255, 255, 0.9);
+            width: 250px;
+            background: rgba(255, 255, 255, 0.8);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
             border: 1px solid rgba(0, 255, 136, 0.3);
-            border-radius: 32px;
-            padding: 20px 24px;
+            border-radius: 28px;
+            padding: 18px 22px;
             box-shadow: 0 20px 30px -10px rgba(0,0,0,0.1);
             text-align: left;
             transform-origin: center center;
@@ -134,18 +134,18 @@ def tela_login():
         
         .argus-title {
             font-family: 'Inter', sans-serif;
-            font-size: 3rem;
+            font-size: 2.8rem;
             font-weight: 800;
             background: linear-gradient(135deg, #059669, #00ff88);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             text-align: center;
-            letter-spacing: 6px;
-            margin: 0 0 4px 0;
+            letter-spacing: 5px;
+            margin: 0 0 2px 0;
         }
         .argus-slogan {
             font-family: 'Inter', sans-serif;
-            font-size: 1rem;
+            font-size: 0.9rem;
             color: #475569;
             text-align: center;
             font-weight: 400;
@@ -154,52 +154,57 @@ def tela_login():
         
         .card-label {
             font-family: 'Inter', sans-serif;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             font-weight: 600;
             color: #2c3e50;
             letter-spacing: 0.3px;
-            margin-bottom: 6px;
+            margin-bottom: 5px;
         }
         .card-value {
             font-family: 'Inter', sans-serif;
-            font-size: 2rem;
+            font-size: 1.9rem;
             font-weight: 700;
             color: #059669;
             line-height: 1.2;
         }
         .card-trend {
             font-family: 'Inter', sans-serif;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             color: #64748b;
-            margin-top: 8px;
+            margin-top: 6px;
         }
         
         /* Formulário */
         .login-form-title {
             font-family: 'Inter', sans-serif;
-            font-size: 1.8rem;
+            font-size: 1.7rem;
             font-weight: 600;
             color: #1e293b;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.3rem;
         }
         .login-form-subtitle {
             font-family: 'Inter', sans-serif;
             color: #64748b;
-            margin-bottom: 2rem;
-            font-size: 0.95rem;
+            margin-bottom: 1.8rem;
+            font-size: 0.9rem;
         }
         
-        /* Inputs */
+        /* Inputs proporcionais */
         div[data-baseweb="input"] {
-            background: rgba(255, 255, 255, 0.9) !important;
-            border: 1px solid rgba(0, 255, 136, 0.4) !important;
-            border-radius: 40px !important;
-            margin-bottom: 1.2rem;
+            background: rgba(255, 255, 255, 0.7) !important;
+            border: 1px solid rgba(0, 255, 136, 0.35) !important;
+            border-radius: 30px !important;
+            margin-bottom: 1rem;
+            height: 48px !important;
+            display: flex;
+            align-items: center;
         }
         div[data-baseweb="input"] input {
             color: #1e293b !important;
             font-family: 'Inter', sans-serif !important;
-            padding: 0.8rem 1.2rem !important;
+            padding: 0.5rem 1rem !important;
+            font-size: 0.95rem !important;
+            background: transparent !important;
         }
         div[data-baseweb="input"] input::placeholder {
             color: #94a3b8 !important;
@@ -211,10 +216,12 @@ def tela_login():
             color: #0b1e2e !important;
             border-radius: 40px !important;
             font-weight: 600 !important;
-            padding: 0.7rem 1.5rem !important;
+            padding: 0.6rem 1.2rem !important;
             width: 100%;
             border: none !important;
-            font-size: 1.05rem;
+            font-size: 1rem;
+            height: 48px;
+            transition: 0.2s;
         }
         .stButton button:hover {
             background: #00cc6a !important;
@@ -222,9 +229,9 @@ def tela_login():
         }
         
         .login-footer {
-            margin-top: 20px;
+            margin-top: 18px;
             color: #64748b;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             text-align: left;
         }
         
@@ -238,10 +245,10 @@ def tela_login():
                 gap: 1rem;
             }
             .login-carousel {
-                height: 260px;
+                height: 240px;
             }
             .argus-title {
-                font-size: 2.5rem;
+                font-size: 2.3rem;
             }
         }
     </style>
