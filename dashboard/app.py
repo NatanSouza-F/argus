@@ -28,17 +28,6 @@ from rfm_analysis import calcular_rfm
 from cohort_analysis import calcular_cohort_matrix
 from jornada_cliente import obter_jornada_produtos, identificar_oportunidades
 
-/* Adicione ao bloco <style> existente */
-.stDataFrame, .stTable {
-    background: rgba(255, 255, 255, 0.7) !important;
-    backdrop-filter: blur(8px);
-    border-radius: 24px !important;
-    border: 1px solid rgba(0,0,0,0.05) !important;
-}
-div[data-testid="stDataFrame"] div[data-testid="stTable"] {
-    background: transparent !important;
-}
-
 # ═══════════════════════════════════════════════════════════════════════════
 # CONFIGURAÇÃO DA PÁGINA E ESTILO GLOBAL (GLASSMORPHISM + INTER)
 # ═══════════════════════════════════════════════════════════════════════════
@@ -134,12 +123,15 @@ st.markdown("""
         box-shadow: 0 4px 12px rgba(0, 255, 136, 0.3);
     }
     
-    .stDataFrame {
-        background: rgba(255, 255, 255, 0.7);
+    .stDataFrame, .stTable {
+        background: rgba(255, 255, 255, 0.7) !important;
         backdrop-filter: blur(8px);
-        border-radius: 24px;
-        border: 1px solid rgba(0,0,0,0.05);
+        border-radius: 24px !important;
+        border: 1px solid rgba(0,0,0,0.05) !important;
         padding: 8px;
+    }
+    div[data-testid="stDataFrame"] div[data-testid="stTable"] {
+        background: transparent !important;
     }
     
     [data-testid="stSidebar"] {
@@ -295,7 +287,7 @@ with tab1:
         st.error(f"Erro: {e}")
 
 # ──────────────────────────────────────────────────────────────────────────
-# TAB 2: Segmentação RFM (com fallback para erros)
+# TAB 2: Segmentação RFM (com fallback)
 # ──────────────────────────────────────────────────────────────────────────
 with tab2:
     st.markdown("### 👥 Segmentação RFM")
@@ -322,6 +314,7 @@ with tab2:
                     st.plotly_chart(fig, use_container_width=True)
     except Exception as e:
         st.error(f"Erro RFM: {e}")
+
 # ──────────────────────────────────────────────────────────────────────────
 # TAB 3: Visão Geral
 # ──────────────────────────────────────────────────────────────────────────
@@ -381,7 +374,6 @@ with tab4:
         )
         st.plotly_chart(fig, use_container_width=True)
         
-        # Top 10 estados em cards
         st.markdown("#### 📌 Top 10 Estados")
         df_top = df_uf.head(10)
         fig2 = px.bar(df_top.sort_values("total_clientes"), x="total_clientes", y="UF", orientation='h',
@@ -415,7 +407,7 @@ with tab5:
         st.error(f"Erro: {e}")
 
 # ──────────────────────────────────────────────────────────────────────────
-# TAB 6: Jornada do Cliente
+# TAB 6: Jornada do Cliente (tabela clara)
 # ──────────────────────────────────────────────────────────────────────────
 with tab6:
     st.markdown("### 🔄 Jornada de Cross-Sell")
@@ -426,22 +418,26 @@ with tab6:
         if not oportunidades.empty:
             st.metric("Jornadas analisadas", f"{insights_jornada['total_jornadas']:,}")
             st.dataframe(
-    oportunidades.rename(columns={
-        "origem": "Origem", "destino": "Destino", "clientes": "Clientes",
-        "conversao": "Conversão %", "recomendacao": "Recomendação",
-        "timing_dias": "Timing", "canal": "Canal"
-    }),
-    use_container_width=True,
-    hide_index=True,
-    column_config={
-        "Conversão %": st.column_config.ProgressColumn(
-            format="%.1f%%",
-            min_value=0,
-            max_value=100,
-            width="medium"
-        )
-    }
-)
+                oportunidades.rename(columns={
+                    "origem": "Origem", "destino": "Destino", "clientes": "Clientes",
+                    "conversao": "Conversão %", "recomendacao": "Recomendação",
+                    "timing_dias": "Timing", "canal": "Canal"
+                }),
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Conversão %": st.column_config.ProgressColumn(
+                        format="%.1f%%",
+                        min_value=0,
+                        max_value=100,
+                        width="medium"
+                    )
+                }
+            )
+        else:
+            st.info("Aguardando dados.")
+    except Exception as e:
+        st.error(f"Erro: {e}")
 
 # ──────────────────────────────────────────────────────────────────────────
 # TAB 7: Comportamental (Layout reorganizado)
@@ -450,7 +446,6 @@ with tab7:
     st.markdown("### 📈 Análise Comportamental")
     st.caption("Relação entre renda declarada e ticket mensal, e distribuição de produtos por estado.")
     
-    # Gráfico de dispersão
     st.markdown("#### 💵 Renda × Ticket Mensal")
     st.markdown("*Cada ponto representa um cliente. Cores indicam quantidade de produtos.*")
     try:
@@ -469,7 +464,6 @@ with tab7:
     
     st.markdown("---")
     
-    # Heatmap
     st.markdown("#### 🗺️ Concentração de Contratos por UF e Produto")
     st.markdown("*Valores representam quantidade de contratos ativos.*")
     try:
@@ -488,7 +482,7 @@ with tab7:
         st.error(f"Erro no heatmap: {e}")
 
 # ──────────────────────────────────────────────────────────────────────────
-# TAB 8: Curva ABC (Versão Turbinada)
+# TAB 8: Curva ABC (Turbinada)
 # ──────────────────────────────────────────────────────────────────────────
 with tab8:
     st.markdown("### 💰 Curva ABC de Clientes")
@@ -496,7 +490,6 @@ with tab8:
     try:
         df_abc = obter_curva_abc()
         if not df_abc.empty:
-            # Cards de resumo
             col1, col2, col3 = st.columns(3)
             classe_a = df_abc[df_abc['classe'] == 'A'].iloc[0] if 'A' in df_abc['classe'].values else {'clientes':0, 'pct_receita':0}
             classe_b = df_abc[df_abc['classe'] == 'B'].iloc[0] if 'B' in df_abc['classe'].values else {'clientes':0, 'pct_receita':0}
@@ -508,7 +501,6 @@ with tab8:
             with col3:
                 st.metric("🟢 Classe C", f"{classe_c['clientes']:,} clientes", f"{classe_c['pct_receita']:.1f}% da receita")
             
-            # Gráfico combinado: barras + linha de Pareto
             fig = go.Figure()
             fig.add_trace(go.Bar(
                 x=df_abc['classe'], y=df_abc['clientes'], name='Clientes',
@@ -529,7 +521,6 @@ with tab8:
             )
             st.plotly_chart(fig, use_container_width=True)
             
-            # Donut chart opcional
             col_donut, _ = st.columns([1, 2])
             with col_donut:
                 fig2 = px.pie(df_abc, values='clientes', names='classe', hole=0.5,
