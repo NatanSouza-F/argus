@@ -256,3 +256,38 @@ def obter_lista_ufs():
     df = pd.read_sql(query, conexao)
     conexao.close()
     return df['UF'].tolist()
+
+import joblib
+import os
+
+@st.cache_resource
+def carregar_modelo():
+    """Carrega o modelo preditivo treinado."""
+    caminho_modelo = os.path.join(os.path.dirname(__file__), '..', 'modelo_cross_sell.pkl')
+    if not os.path.exists(caminho_modelo):
+        return None
+    data = joblib.load(caminho_modelo)
+    return data['modelo'], data['features']
+
+def prever_probabilidade(df_leads):
+    """Aplica o modelo aos leads e retorna array de probabilidades."""
+    modelo, features = carregar_modelo()
+    if modelo is None:
+        return np.zeros(len(df_leads))
+    
+    # Prepara features no mesmo formato do treino
+    df = df_leads.copy()
+    # One-hot encoding para UF (deve coincidir com as top UFs do treino)
+    top_ufs = [f.split('_')[1] for f in features if f.startswith('UF_') and f != 'UF_OUTROS']
+    df['UF_agg'] = df['UF'].apply(lambda x: x if x in top_ufs else 'OUTROS')
+    df = pd.get_dummies(df, columns=['UF_agg'], prefix='UF')
+    
+    # Garante que todas as colunas esperadas existam
+    for col in features:
+        if col not in df.columns:
+            df[col] = 0
+    X = df[features]
+    
+    # Probabilidade da classe positiva (target=1)
+    probas = modelo.predict_proba(X)[:, 1]
+    return probas
