@@ -28,6 +28,17 @@ from rfm_analysis import calcular_rfm
 from cohort_analysis import calcular_cohort_matrix
 from jornada_cliente import obter_jornada_produtos, identificar_oportunidades
 
+/* Adicione ao bloco <style> existente */
+.stDataFrame, .stTable {
+    background: rgba(255, 255, 255, 0.7) !important;
+    backdrop-filter: blur(8px);
+    border-radius: 24px !important;
+    border: 1px solid rgba(0,0,0,0.05) !important;
+}
+div[data-testid="stDataFrame"] div[data-testid="stTable"] {
+    background: transparent !important;
+}
+
 # ═══════════════════════════════════════════════════════════════════════════
 # CONFIGURAÇÃO DA PÁGINA E ESTILO GLOBAL (GLASSMORPHISM + INTER)
 # ═══════════════════════════════════════════════════════════════════════════
@@ -284,27 +295,33 @@ with tab1:
         st.error(f"Erro: {e}")
 
 # ──────────────────────────────────────────────────────────────────────────
-# TAB 2: Segmentação RFM (Visual Aprimorado)
+# TAB 2: Segmentação RFM (com fallback para erros)
 # ──────────────────────────────────────────────────────────────────────────
 with tab2:
     st.markdown("### 👥 Segmentação RFM")
     try:
         with st.spinner("Analisando comportamento..."):
-            _, resumo = calcular_rfm()
-        campeoes = resumo.loc["Campeoes"] if "Campeoes" in resumo.index else {"Total_Clientes": 0}
-        cols = st.columns(1 if is_mobile() else 4)
-        with cols[0]: st.metric("🏆 Campeões", f"{campeoes.get('Total_Clientes',0):,}")
-        with cols[1] if len(cols)>1 else cols[0]: st.metric("⚡ Potenciais", f"{resumo.loc['Potenciais','Total_Clientes'] if 'Potenciais' in resumo.index else 0:,}")
-        with cols[2] if len(cols)>2 else cols[0]: st.metric("⚠️ Em Risco", f"{resumo.loc['Em Risco','Total_Clientes'] if 'Em Risco' in resumo.index else 0:,}")
-        with cols[3] if len(cols)>3 else cols[0]: st.metric("⭐ Leais", f"{resumo.loc['Leais','Total_Clientes'] if 'Leais' in resumo.index else 0:,}")
-        
-        fig = px.bar(resumo.reset_index(), x="Total_Clientes", y="segmento", orientation='h',
-                     color="segmento", color_discrete_map={"Campeoes":"#00ff88","Potenciais":"#b794f6","Em Risco":"#ff6b6b","Leais":"#00d4ff"})
-        fig.update_layout(**layout_padrao(450))
-        st.plotly_chart(fig, use_container_width=True)
+            resultado = calcular_rfm()
+            if resultado is None or len(resultado) != 2:
+                st.warning("Não foi possível carregar os dados RFM. Tente novamente mais tarde.")
+            else:
+                _, resumo = resultado
+                if resumo is None or resumo.empty:
+                    st.warning("Dados RFM indisponíveis no momento.")
+                else:
+                    campeoes = resumo.loc["Campeoes"] if "Campeoes" in resumo.index else {"Total_Clientes": 0}
+                    cols = st.columns(1 if is_mobile() else 4)
+                    with cols[0]: st.metric("🏆 Campeões", f"{campeoes.get('Total_Clientes',0):,}")
+                    with cols[1] if len(cols)>1 else cols[0]: st.metric("⚡ Potenciais", f"{resumo.loc['Potenciais','Total_Clientes'] if 'Potenciais' in resumo.index else 0:,}")
+                    with cols[2] if len(cols)>2 else cols[0]: st.metric("⚠️ Em Risco", f"{resumo.loc['Em Risco','Total_Clientes'] if 'Em Risco' in resumo.index else 0:,}")
+                    with cols[3] if len(cols)>3 else cols[0]: st.metric("⭐ Leais", f"{resumo.loc['Leais','Total_Clientes'] if 'Leais' in resumo.index else 0:,}")
+                    
+                    fig = px.bar(resumo.reset_index(), x="Total_Clientes", y="segmento", orientation='h',
+                                 color="segmento", color_discrete_map={"Campeoes":"#00ff88","Potenciais":"#b794f6","Em Risco":"#ff6b6b","Leais":"#00d4ff"})
+                    fig.update_layout(**layout_padrao(450))
+                    st.plotly_chart(fig, use_container_width=True)
     except Exception as e:
         st.error(f"Erro RFM: {e}")
-
 # ──────────────────────────────────────────────────────────────────────────
 # TAB 3: Visão Geral
 # ──────────────────────────────────────────────────────────────────────────
@@ -322,17 +339,58 @@ with tab3:
         st.plotly_chart(fig, use_container_width=True)
 
 # ──────────────────────────────────────────────────────────────────────────
-# TAB 4: Geografia
+# TAB 4: Geografia (Mapa estilizado)
 # ──────────────────────────────────────────────────────────────────────────
 with tab4:
-    renda_geo = st.slider("Renda mínima", 2500, 20000, 10000, 1000)
-    df_uf = obter_distribuicao_uf(renda_geo)
-    fig = px.choropleth(df_uf, geojson="https://raw.githubusercontent.com/codeforgermany/click_that_hood/main/public/data/brazil-states.geojson",
-                        locations="UF", featureidkey="properties.sigla", color="total_clientes",
-                        color_continuous_scale=["#e6fff0","#00ff88","#059669"])
-    fig.update_geos(fitbounds="locations", visible=False)
-    fig.update_layout(height=450, margin=dict(t=0))
-    st.plotly_chart(fig, use_container_width=True)
+    st.markdown("### 🗺️ Concentração Geográfica")
+    col1, col2 = st.columns([1, 3])
+    with col1:
+        renda_geo = st.slider("Renda mínima (R$)", 2500, 20000, 10000, 1000, key="renda_geo")
+    try:
+        df_uf = obter_distribuicao_uf(renda_min=renda_geo)
+        fig = px.choropleth(
+            df_uf,
+            geojson="https://raw.githubusercontent.com/codeforgermany/click_that_hood/main/public/data/brazil-states.geojson",
+            locations="UF",
+            featureidkey="properties.sigla",
+            color="total_clientes",
+            color_continuous_scale=["#d1fae5", "#10b981", "#047857"],
+            scope="south america",
+            labels={"total_clientes": "Clientes"}
+        )
+        fig.update_geos(
+            fitbounds="locations",
+            visible=False,
+            bgcolor='rgba(0,0,0,0)',
+            showcoastlines=False,
+            showland=False,
+            showcountries=False
+        )
+        fig.update_layout(
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font={"family": "Inter, sans-serif", "color": "#1e293b"},
+            height=500 if not is_mobile() else 400,
+            margin={"t": 0, "b": 0, "l": 0, "r": 0},
+            coloraxis_colorbar=dict(
+                title="Clientes",
+                tickfont={"color": "#1e293b"},
+                bgcolor="rgba(255,255,255,0.5)",
+                thickness=15
+            )
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Top 10 estados em cards
+        st.markdown("#### 📌 Top 10 Estados")
+        df_top = df_uf.head(10)
+        fig2 = px.bar(df_top.sort_values("total_clientes"), x="total_clientes", y="UF", orientation='h',
+                      color_discrete_sequence=["#00ff88"], text="total_clientes")
+        fig2.update_traces(texttemplate='%{text:,}', textposition='outside')
+        fig2.update_layout(**layout_padrao(400), showlegend=False, xaxis_title="Clientes", yaxis_title="")
+        st.plotly_chart(fig2, use_container_width=True)
+    except Exception as e:
+        st.error(f"Erro ao carregar mapa: {e}")
 
 # ──────────────────────────────────────────────────────────────────────────
 # TAB 5: Cohort
@@ -368,60 +426,120 @@ with tab6:
         if not oportunidades.empty:
             st.metric("Jornadas analisadas", f"{insights_jornada['total_jornadas']:,}")
             st.dataframe(
-                oportunidades.rename(columns={
-                    "origem": "Origem", "destino": "Destino", "clientes": "Clientes",
-                    "conversao": "Conversão %", "recomendacao": "Recomendação",
-                    "timing_dias": "Timing", "canal": "Canal"
-                }),
-                use_container_width=True, hide_index=True,
-                column_config={"Conversão %": st.column_config.ProgressColumn(format="%.1f%%", min_value=0, max_value=100)},
-            )
-        else:
-            st.info("Aguardando dados.")
-    except Exception as e:
-        st.error(f"Erro: {e}")
+    oportunidades.rename(columns={
+        "origem": "Origem", "destino": "Destino", "clientes": "Clientes",
+        "conversao": "Conversão %", "recomendacao": "Recomendação",
+        "timing_dias": "Timing", "canal": "Canal"
+    }),
+    use_container_width=True,
+    hide_index=True,
+    column_config={
+        "Conversão %": st.column_config.ProgressColumn(
+            format="%.1f%%",
+            min_value=0,
+            max_value=100,
+            width="medium"
+        )
+    }
+)
 
 # ──────────────────────────────────────────────────────────────────────────
-# TAB 7: Comportamental
+# TAB 7: Comportamental (Layout reorganizado)
 # ──────────────────────────────────────────────────────────────────────────
 with tab7:
-    st.markdown("#### Renda × Ticket Mensal")
+    st.markdown("### 📈 Análise Comportamental")
+    st.caption("Relação entre renda declarada e ticket mensal, e distribuição de produtos por estado.")
+    
+    # Gráfico de dispersão
+    st.markdown("#### 💵 Renda × Ticket Mensal")
+    st.markdown("*Cada ponto representa um cliente. Cores indicam quantidade de produtos.*")
     try:
         df_scatter = obter_scatter_renda_ticket()
-        fig = px.scatter(df_scatter, x="Renda_Mensal", y="ticket_mensal", color="produtos", size="produtos",
-                         color_continuous_scale=[[0, "#a7f3d0"], [0.5, "#10b981"], [1, "#059669"]])
+        fig = px.scatter(
+            df_scatter, x="Renda_Mensal", y="ticket_mensal", color="produtos", size="produtos",
+            color_continuous_scale=[[0, "#a7f3d0"], [0.5, "#10b981"], [1, "#059669"]],
+            hover_data={"UF": True, "produtos": True}
+        )
         fig.update_layout(**layout_padrao(450 if is_mobile() else 500))
+        fig.update_xaxes(title="Renda Mensal (R$)")
+        fig.update_yaxes(title="Ticket Mensal (R$)")
         st.plotly_chart(fig, use_container_width=True)
-
+    except Exception as e:
+        st.error(f"Erro no gráfico de dispersão: {e}")
+    
+    st.markdown("---")
+    
+    # Heatmap
+    st.markdown("#### 🗺️ Concentração de Contratos por UF e Produto")
+    st.markdown("*Valores representam quantidade de contratos ativos.*")
+    try:
         df_heatmap = obter_heatmap_uf_produto()
-        fig2 = px.imshow(df_heatmap, color_continuous_scale=[[0, "#f8fafc"], [0.5, "#10b981"], [1, "#059669"]],
-                         aspect="auto", text_auto=".0f")
+        fig2 = px.imshow(
+            df_heatmap,
+            color_continuous_scale=[[0, "#f0fdf4"], [0.5, "#10b981"], [1, "#047857"]],
+            aspect="auto",
+            text_auto='.2s'
+        )
         fig2.update_layout(**layout_padrao(500 if is_mobile() else 550))
+        fig2.update_xaxes(title="Produto", tickangle=45)
+        fig2.update_yaxes(title="UF")
         st.plotly_chart(fig2, use_container_width=True)
     except Exception as e:
-        st.error(f"Erro: {e}")
+        st.error(f"Erro no heatmap: {e}")
 
 # ──────────────────────────────────────────────────────────────────────────
-# TAB 8: Curva ABC
+# TAB 8: Curva ABC (Versão Turbinada)
 # ──────────────────────────────────────────────────────────────────────────
 with tab8:
+    st.markdown("### 💰 Curva ABC de Clientes")
+    st.caption("Classificação por receita: A (top 20%), B (30% seguintes), C (demais).")
     try:
         df_abc = obter_curva_abc()
         if not df_abc.empty:
-            col_a, col_b = st.columns(1 if is_mobile() else [1, 2])
-            with col_a:
-                fig = go.Figure(data=[go.Pie(labels=df_abc["classe"], values=df_abc["clientes"],
-                                             hole=0.6, marker_colors=["#00ff88", "#00d4ff", "#b794f6"])])
-                fig.update_layout(**layout_padrao(350))
-                st.plotly_chart(fig, use_container_width=True)
-            with col_b:
-                fig = px.bar(df_abc, x="classe", y="pct_receita", text="pct_receita", color="classe",
-                             color_discrete_sequence=["#00ff88", "#00d4ff", "#b794f6"])
-                fig.update_traces(texttemplate="%{text}%", textposition="outside")
-                fig.update_layout(**layout_padrao(350), showlegend=False)
-                st.plotly_chart(fig, use_container_width=True)
+            # Cards de resumo
+            col1, col2, col3 = st.columns(3)
+            classe_a = df_abc[df_abc['classe'] == 'A'].iloc[0] if 'A' in df_abc['classe'].values else {'clientes':0, 'pct_receita':0}
+            classe_b = df_abc[df_abc['classe'] == 'B'].iloc[0] if 'B' in df_abc['classe'].values else {'clientes':0, 'pct_receita':0}
+            classe_c = df_abc[df_abc['classe'] == 'C'].iloc[0] if 'C' in df_abc['classe'].values else {'clientes':0, 'pct_receita':0}
+            with col1:
+                st.metric("🔴 Classe A", f"{classe_a['clientes']:,} clientes", f"{classe_a['pct_receita']:.1f}% da receita")
+            with col2:
+                st.metric("🟡 Classe B", f"{classe_b['clientes']:,} clientes", f"{classe_b['pct_receita']:.1f}% da receita")
+            with col3:
+                st.metric("🟢 Classe C", f"{classe_c['clientes']:,} clientes", f"{classe_c['pct_receita']:.1f}% da receita")
+            
+            # Gráfico combinado: barras + linha de Pareto
+            fig = go.Figure()
+            fig.add_trace(go.Bar(
+                x=df_abc['classe'], y=df_abc['clientes'], name='Clientes',
+                marker_color=['#ef4444', '#f59e0b', '#10b981'], text=df_abc['clientes'], textposition='outside'
+            ))
+            fig.add_trace(go.Scatter(
+                x=df_abc['classe'], y=df_abc['pct_receita'], name='% Receita (Pareto)',
+                yaxis='y2', line=dict(color='#3b82f6', width=3), mode='lines+markers',
+                marker=dict(size=10)
+            ))
+            fig.update_layout(
+                title="Distribuição de Clientes vs. Concentração de Receita",
+                xaxis_title="Classe",
+                yaxis=dict(title="Número de Clientes"),
+                yaxis2=dict(title="% da Receita Total", overlaying='y', side='right', ticksuffix='%'),
+                legend=dict(orientation='h', yanchor='bottom', y=1.02),
+                **layout_padrao(450)
+            )
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Donut chart opcional
+            col_donut, _ = st.columns([1, 2])
+            with col_donut:
+                fig2 = px.pie(df_abc, values='clientes', names='classe', hole=0.5,
+                              color='classe', color_discrete_map={'A':'#ef4444','B':'#f59e0b','C':'#10b981'})
+                fig2.update_layout(showlegend=False, **layout_padrao(300))
+                st.plotly_chart(fig2, use_container_width=True)
+        else:
+            st.warning("Dados da Curva ABC não disponíveis.")
     except Exception as e:
-        st.error(f"Erro: {e}")
+        st.error(f"Erro na Curva ABC: {e}")
 
 # ═══════════════════════════════════════════════════════════════════════════
 # FOOTER
