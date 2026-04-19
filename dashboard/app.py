@@ -344,14 +344,22 @@ with tab1:
     st.markdown('<div class="section-header">🎯 Leads Prioritários</div>', unsafe_allow_html=True)
 
     with st.expander("⚙️ Painel de Controle", expanded=not is_mobile()):
-        col1, col2, col3 = st.columns([1, 1, 1] if not is_mobile() else [1])
         ufs = ["Todos"] + (obter_lista_ufs() if callable(obter_lista_ufs) else [])
-        with col1:
+
+        if is_mobile():
+            # Mobile: cada filtro em uma linha (mais legível em tela pequena)
             uf_sel = st.selectbox("📍 Estado", ufs, key="uf_leads")
-        with col2:
             renda_min = st.slider("💰 Renda mínima (R$)", 10000, 20000, 15000, 1000, key="renda_leads")
-        with col3:
             qtd = st.slider("🔢 Quantidade", 10, 100, 20, 10, key="qtd_leads")
+        else:
+            # Desktop: três colunas lado a lado
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                uf_sel = st.selectbox("📍 Estado", ufs, key="uf_leads")
+            with col2:
+                renda_min = st.slider("💰 Renda mínima (R$)", 10000, 20000, 15000, 1000, key="renda_leads")
+            with col3:
+                qtd = st.slider("🔢 Quantidade", 10, 100, 20, 10, key="qtd_leads")
 
         c1, c2 = st.columns([1, 4])
         with c1:
@@ -480,9 +488,8 @@ with tab2:
 
 # TAB 3: Visão Geral
 with tab3:
-    c1, c2 = st.columns(1 if is_mobile() else 2)
-
-    with c1:
+    # Função auxiliar pra renderizar cada gráfico (evita duplicação)
+    def render_segmentacao_renda():
         st.markdown('<div class="section-header">📊 Segmentação por renda</div>', unsafe_allow_html=True)
         df_renda = obter_segmentacao_renda()
         fig = px.bar(
@@ -502,7 +509,7 @@ with tab3:
             df_view.columns = ["Faixa de renda", "Total de clientes"]
             st.dataframe(df_view, use_container_width=True, hide_index=True)
 
-    with c2:
+    def render_evolucao_base():
         st.markdown('<div class="section-header">📈 Evolução da base</div>', unsafe_allow_html=True)
         df_evol = obter_evolucao_cadastros()
         fig = go.Figure()
@@ -518,6 +525,19 @@ with tab3:
         fig.update_xaxes(title="Período")
         fig.update_yaxes(title="Clientes acumulados")
         st.plotly_chart(fig, use_container_width=True)
+
+    if is_mobile():
+        # Mobile: empilhado
+        render_segmentacao_renda()
+        st.markdown("<br>", unsafe_allow_html=True)
+        render_evolucao_base()
+    else:
+        # Desktop: lado a lado
+        c1, c2 = st.columns(2)
+        with c1:
+            render_segmentacao_renda()
+        with c2:
+            render_evolucao_base()
 
 
 # TAB 4: Geografia
