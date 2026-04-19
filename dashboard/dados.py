@@ -1,24 +1,28 @@
 """
 Camada de acesso a dados do dashboard Argus.
+Conecta no SQL Server (Azure ou local) e provê queries cacheadas.
 """
 import pyodbc
 import pandas as pd
 import numpy as np
 import streamlit as st
 import os
+import joblib
 from dotenv import load_dotenv
 
 load_dotenv()
 
 UFS_VALIDAS = [
-    'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA',
-    'MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN',
-    'RS','RO','RR','SC','SP','SE','TO'
+    'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
+    'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
+    'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
 ]
+
 
 def conectar_banco():
     from config import conectar_banco as _conectar
     return _conectar()
+
 
 @st.cache_data(ttl=3600)
 def obter_kpis_gerais():
@@ -35,6 +39,7 @@ def obter_kpis_gerais():
     conexao.close()
     return df.iloc[0]
 
+
 @st.cache_data(ttl=3600)
 def obter_taxa_conversao():
     conexao = conectar_banco()
@@ -48,6 +53,7 @@ def obter_taxa_conversao():
     if df.iloc[0]['total'] > 0:
         return (df.iloc[0]['com_consorcio'] / df.iloc[0]['total']) * 100
     return 0
+
 
 @st.cache_data(ttl=3600)
 def obter_distribuicao_uf(renda_min=10000):
@@ -71,6 +77,7 @@ def obter_distribuicao_uf(renda_min=10000):
     conexao.close()
     return df
 
+
 @st.cache_data(ttl=3600)
 def obter_portfolio_produtos():
     conexao = conectar_banco()
@@ -88,6 +95,7 @@ def obter_portfolio_produtos():
     df = pd.read_sql(query, conexao)
     conexao.close()
     return df
+
 
 @st.cache_data(ttl=3600)
 def obter_segmentacao_renda():
@@ -116,6 +124,7 @@ def obter_segmentacao_renda():
     df = pd.read_sql(query, conexao)
     conexao.close()
     return df
+
 
 @st.cache_data(ttl=3600)
 def obter_top_leads(renda_min=15000, uf_filtro=None, limite=20):
@@ -146,11 +155,13 @@ def obter_top_leads(renda_min=15000, uf_filtro=None, limite=20):
     """
     df = pd.read_sql(query, conexao)
     conexao.close()
-    
-    # Gera telefone fictício baseado no ID (substituir por coluna real quando disponível)
-    df['Telefone'] = df['ID_Cliente'].apply(lambda x: f"55{ (x % 999999999) + 1100000000 }")
-    
+
+    # Telefone fictício baseado no ID
+    df['Telefone'] = df['ID_Cliente'].apply(
+        lambda x: f"55{(x % 999999999) + 1100000000}"
+    )
     return df
+
 
 @st.cache_data(ttl=3600)
 def obter_evolucao_cadastros():
@@ -169,6 +180,7 @@ def obter_evolucao_cadastros():
     df['periodo'] = df['ano'].astype(str) + '-' + df['mes'].astype(str).str.zfill(2)
     df['acumulado'] = df['novos_clientes'].cumsum()
     return df
+
 
 @st.cache_data(ttl=3600)
 def obter_heatmap_uf_produto():
@@ -189,6 +201,7 @@ def obter_heatmap_uf_produto():
     df = pd.read_sql(query, conexao)
     conexao.close()
     return df.pivot(index='UF', columns='Produto', values='total').fillna(0)
+
 
 @st.cache_data(ttl=3600)
 def obter_curva_abc():
@@ -221,6 +234,7 @@ def obter_curva_abc():
     resumo['pct_receita'] = (100 * resumo['receita_total'] / resumo['receita_total'].sum()).round(2)
     return resumo
 
+
 @st.cache_data(ttl=3600)
 def obter_scatter_renda_ticket():
     conexao = conectar_banco()
@@ -244,12 +258,13 @@ def obter_scatter_renda_ticket():
     conexao.close()
     return df
 
+
 @st.cache_data(ttl=3600)
 def obter_lista_ufs():
     conexao = conectar_banco()
     ufs_str = ",".join([f"'{uf}'" for uf in UFS_VALIDAS])
     query = f"""
-    SELECT DISTINCT UF 
+    SELECT DISTINCT UF
     FROM Dim_Clientes
     WHERE UF IN ({ufs_str})
     ORDER BY UF
@@ -258,15 +273,10 @@ def obter_lista_ufs():
     conexao.close()
     return df['UF'].tolist()
 
-import joblib
-import os
 
 # ═══════════════════════════════════════════════════════════════
-# MODELO DE ML — fallback quando o modelo não existe
+# MODELO DE ML — com fallback heurístico quando não existe
 # ═══════════════════════════════════════════════════════════════
-import joblib
-
-
 @st.cache_resource
 def carregar_modelo():
     """Carrega o modelo preditivo. Retorna (None, None) se não existir."""
@@ -285,25 +295,24 @@ def carregar_modelo():
 def prever_probabilidade(df_leads):
     """
     Aplica o modelo aos leads e retorna array de probabilidades.
-    Se o modelo não existir, retorna scores ilustrativos baseados
-    em renda e produtos ativos (regra heurística).
+    Se o modelo não existir, usa score heurístico baseado em renda
+    e produtos ativos.
     """
     modelo, features = carregar_modelo()
 
-    # Fallback heurístico quando o modelo não está treinado
+    # Fallback heurístico — quando modelo não está treinado
     if modelo is None or features is None:
         scores = []
         for _, row in df_leads.iterrows():
             renda = row.get('Renda_Mensal', 0)
             produtos = row.get('produtos_ativos', 0)
-            # Score entre 0 e 1, ponderando renda e produtos
             score_renda = min(renda / 20000, 1.0)
             score_produtos = min(produtos / 4, 1.0)
             score_final = (score_renda * 0.7 + score_produtos * 0.3)
             scores.append(round(score_final, 3))
         return np.array(scores)
 
-    # Quando o modelo real existir
+    # Modelo real — quando existir
     df = df_leads.copy()
     top_ufs = [f.split('_')[1] for f in features
                if f.startswith('UF_') and f != 'UF_OUTROS']
