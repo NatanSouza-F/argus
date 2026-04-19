@@ -686,7 +686,7 @@ with tab6:
         st.error(f"Erro: {e}")
 
 
-# TAB 7: Comportamental (refeita — com filtros e didática)
+# TAB 7: Comportamental
 with tab7:
     st.markdown('<div class="section-header">💡 Análise comportamental</div>', unsafe_allow_html=True)
     st.caption(
@@ -764,7 +764,7 @@ with tab7:
         st.error(f"Erro: {e}")
 
 
-# TAB 8: Curva ABC (BUG CORRIGIDO)
+# TAB 8: Curva ABC
 with tab8:
     st.markdown('<div class="section-header">💰 Curva ABC de Clientes</div>', unsafe_allow_html=True)
 
@@ -795,7 +795,6 @@ with tab8:
 
             st.markdown("<br>", unsafe_allow_html=True)
 
-            # Construção manual do layout (sem usar layout_claro para evitar conflito yaxis)
             fig = go.Figure()
             fig.add_trace(go.Bar(
                 x=df_abc['classe'],
